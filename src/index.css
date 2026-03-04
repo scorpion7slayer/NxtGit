@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.08);
+    --accent: #007AFF;
+    --accent-secondary: #5856D6;
+    --success: #34C759;
+    --warning: #FF9500;
+    --error: #FF3B30;
+    --text-primary: #1D1D1F;
+    --text-secondary: #86868B;
+    --text-tertiary: #C7C7CC;
+    --bg-primary: #F5F5F7;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #E5E5EA;
+    --border: rgba(0, 0, 0, 0.1);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --glass-bg: rgba(30, 30, 30, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.3);
+      --text-primary: #FFFFFF;
+      --text-secondary: #98989D;
+      --text-tertiary: #636366;
+      --bg-primary: #000000;
+      --bg-secondary: #1C1C1E;
+      --bg-tertiary: #2C2C2E;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+@layer components {
+  .glass {
+    @apply backdrop-blur-xl;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-panel {
+    @apply glass rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: var(--accent-hover, #0051D5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .btn-secondary:hover {
+    background: var(--bg-secondary);
+  }
+
+  .input-glass {
+    @apply w-full px-4 py-3 rounded-xl outline-none transition-all;
+    background: var(--bg-tertiary);
+    border: 1px solid transparent;
+    color: var(--text-primary);
+  }
+
+  .input-glass:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer;
+    color: var(--text-secondary);
+  }
+
+  .sidebar-item:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .sidebar-item.active {
+    background: var(--accent);
+    color: white;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  }
+}
