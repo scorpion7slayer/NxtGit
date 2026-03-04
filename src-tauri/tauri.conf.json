@@ -1,73 +1,21 @@
 {
-  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "NxtGit",
+  "version": "0.1.0",
+  "identifier": "com.scorpion7slayer.nxtgit",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": false
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true
-      },
-      "http": {
-        "all": true,
-        "request": true,
-        "scope": [
-          "https://api.github.com/*",
-          "https://openrouter.ai/*",
-          "https://github.com/*"
-        ]
-      },
-      "store": {
-        "all": true
-      },
-      "window": {
-        "all": true,
-        "close": true,
-        "hide": true,
-        "show": true,
-        "maximize": true,
-        "minimize": true,
-        "unmaximize": true,
-        "unminimize": true,
-        "startDragging": true,
-        "setFullscreen": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "targets": "dmg",
-      "identifier": "com.scorpion7slayer.nxtgit",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "macOS": {
-        "frameworks": [],
-        "minimumSystemVersion": "14.0",
-        "exceptionDomain": "",
-        "signingIdentity": null,
-        "entitlements": null,
-        "license": "MIT",
-        "category": "DeveloperTool"
-      }
-    },
+  "app": {
     "security": {
-      "csp": null
-    },
-    "updater": {
-      "active": false
+      "csp": "default-src 'self'; connect-src 'self' https://api.github.com https://api.openrouter.ai https://openrouter.ai; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:;"
     },
     "windows": [
       {
+        "label": "main",
         "fullscreen": false,
         "resizable": true,
         "title": "NxtGit",
@@ -81,5 +29,24 @@
         "acceptFirstMouse": true
       }
     ]
-  }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg"],
+    "category": "DeveloperTool",
+    "copyright": "MIT",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "14.0",
+      "license": "MIT"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {}
 }

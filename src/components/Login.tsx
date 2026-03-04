@@ -8,7 +8,7 @@ const Login: React.FC = () => {
     setIsLoading(true);
     // OAuth flow will be handled here
     // For now, open GitHub OAuth in browser
-    const clientId = 'YOUR_GITHUB_CLIENT_ID';
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || '';
     const redirectUri = 'http://localhost:1420/auth/callback';
     const scope = 'repo read:user read:org';
     

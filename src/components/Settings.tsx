@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Key, Github, Bot, Bell, Shield } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
 
 const Settings: React.FC = () => {
+  const { user } = useAuthStore();
   const [openRouterKey, setOpenRouterKey] = useState('');
   const [notifications, setNotifications] = useState(true);
   const [autoReview, setAutoReview] = useState(false);
@@ -24,13 +26,13 @@ const Settings: React.FC = () => {
                style={{ background: 'var(--bg-tertiary)' }}>
             <div className="flex items-center gap-3">
               <img 
-                src="https://github.com/scorpion7slayer.png" 
+                src={user?.avatar_url || 'https://github.com/github.png'} 
                 alt="GitHub" 
                 className="w-10 h-10 rounded-full"
               />
               <div>
                 <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  Connected as scorpion7slayer
+                  Connected as {user?.login || 'unknown'}
                 </p>
                 <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
                   Token expires in 29 days
