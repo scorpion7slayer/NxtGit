@@ -1,174 +1,113 @@
-import React, { useState } from 'react';
-import { GitPullRequest, Plus, Sparkles, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { GitPullRequest, CheckCircle, XCircle, Loader2, MessageSquare } from 'lucide-react';
+import { fetchUserPRs, repoNameFromUrl, timeAgo, type GitHubPR } from '../lib/github';
 
 const PullRequests: React.FC = () => {
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [prs, setPrs] = useState<GitHubPR[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('open');
 
-  const handleGenerateDescription = (id: string) => {
-    setGeneratingId(id);
-    // AI generation logic here
-    setTimeout(() => setGeneratingId(null), 2000);
-  };
+  useEffect(() => {
+    fetchUserPRs()
+      .then(setPrs)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = prs.filter(pr => {
+    if (filter === 'all') return true;
+    if (filter === 'open') return pr.state === 'open';
+    return pr.state === 'closed';
+  });
+
+  const openCount = prs.filter(p => p.state === 'open').length;
+  const closedCount = prs.filter(p => p.state === 'closed').length;
 
   return (
-    <div className="p-8">
-      <header className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-            Pull Requests
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Manage and review your pull requests
-          </p>
-        </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          New PR
-        </button>
+    <div className="p-6 max-w-5xl">
+      <header className="mb-4">
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Pull Requests</h1>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Your pull requests across all repositories
+        </p>
       </header>
 
-      <div className="space-y-4">
-        <PRCard 
-          id="1"
-          title="feat: integrate OpenRouter API for AI reviews"
-          repo="scorpion7slayer/NxtGit"
-          author="scorpion7slayer"
-          avatar="https://github.com/scorpion7slayer.png"
-          status="open"
-          comments={3}
-          checks={{ passed: 4, total: 5 }}
-          branch="feature/ai-integration"
-          base="main"
-          updated="2 hours ago"
-          onGenerate={() => handleGenerateDescription('1')}
-          isGenerating={generatingId === '1'}
-        />
-        <PRCard 
-          id="2"
-          title="fix: resolve auth token refresh issue"
-          repo="scorpion7slayer/market-plier"
-          author="dev-contributor"
-          avatar="https://github.com/github.png"
-          status="open"
-          comments={1}
-          checks={{ passed: 5, total: 5 }}
-          branch="fix/auth-refresh"
-          base="devh"
-          updated="5 hours ago"
-          onGenerate={() => handleGenerateDescription('2')}
-          isGenerating={generatingId === '2'}
-        />
-        <PRCard 
-          id="3"
-          title="docs: update README with installation steps"
-          repo="flavortown/hackclub"
-          author="contributor-42"
-          avatar="https://github.com/octocat.png"
-          status="merged"
-          comments={0}
-          checks={{ passed: 3, total: 3 }}
-          branch="docs/readme-update"
-          base="main"
-          updated="2 days ago"
-        />
+      <div className="flex gap-0 border rounded-lg overflow-hidden w-fit mb-4" style={{ borderColor: 'var(--border)' }}>
+        <FilterBtn active={filter === 'open'} onClick={() => setFilter('open')}>
+          Open ({openCount})
+        </FilterBtn>
+        <FilterBtn active={filter === 'closed'} onClick={() => setFilter('closed')}>
+          Closed ({closedCount})
+        </FilterBtn>
+        <FilterBtn active={filter === 'all'} onClick={() => setFilter('all')}>
+          All
+        </FilterBtn>
       </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--text-tertiary)' }} />
+        </div>
+      ) : error ? (
+        <div className="text-center py-20 text-sm" style={{ color: 'var(--error)' }}>{error}</div>
+      ) : filtered.length === 0 ? (
+        <p className="text-center py-12 text-sm" style={{ color: 'var(--text-tertiary)' }}>No pull requests found.</p>
+      ) : (
+        <div className="border rounded-lg divide-y" style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
+          {filtered.map(pr => (
+            <PRRow key={pr.id} pr={pr} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-interface PRCardProps {
-  id: string;
-  title: string;
-  repo: string;
-  author: string;
-  avatar: string;
-  status: 'open' | 'closed' | 'merged';
-  comments: number;
-  checks: { passed: number; total: number };
-  branch: string;
-  base: string;
-  updated: string;
-  onGenerate?: () => void;
-  isGenerating?: boolean;
-}
-
-const PRCard: React.FC<PRCardProps> = ({ 
-  title, repo, author, avatar, status, comments, checks, branch, base, updated,
-  onGenerate, isGenerating
-}) => {
-  const statusConfig = {
-    open: { icon: GitPullRequest, color: '#3FB950', bg: '#3FB95020' },
-    closed: { icon: XCircle, color: '#F85149', bg: '#F8514920' },
-    merged: { icon: CheckCircle, color: '#A371F7', bg: '#A371F720' }
-  };
-
-  const StatusIcon = statusConfig[status].icon;
-  const allChecksPassed = checks.passed === checks.total;
+const PRRow: React.FC<{ pr: GitHubPR }> = ({ pr }) => {
+  const merged = pr.pull_request?.merged_at != null;
+  const status = merged ? 'merged' : pr.state;
+  const color = status === 'merged' ? '#A371F7' : status === 'open' ? '#3FB950' : '#F85149';
+  const Icon = status === 'merged' ? CheckCircle : status === 'closed' ? XCircle : GitPullRequest;
+  const repoName = repoNameFromUrl(pr.repository_url);
 
   return (
-    <div className="glass-panel p-5">
-      <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center"
-             style={{ background: statusConfig[status].bg }}>
-          <StatusIcon className="w-5 h-5" style={{ color: statusConfig[status].color }} />
-        </div>
-        
-        <div className="flex-1">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h3 className="font-semibold text-lg mb-1" style={{ color: 'var(--text-primary)' }}>
-                {title}
-              </h3>
-              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                {repo} • {branch} → {base}
-              </p>
-            </div>
-            
-            {status === 'open' && onGenerate && (
-              <button 
-                onClick={onGenerate}
-                disabled={isGenerating}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
-                style={{ 
-                  background: 'linear-gradient(135deg, #007AFF, #5856D6)',
-                  color: 'white'
-                }}
-              >
-                {isGenerating ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                {isGenerating ? 'Generating...' : 'AI Description'}
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            <span className="flex items-center gap-1.5">
-              <img src={avatar} alt={author} className="w-5 h-5 rounded-full" />
-              {author}
+    <div className="px-4 py-3">
+      <div className="flex items-start gap-2">
+        <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{pr.title}</p>
+          <div className="flex items-center gap-3 mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            <span>{repoName}</span>
+            <span>#{pr.number}</span>
+            <span className="flex items-center gap-1">
+              <img src={pr.user.avatar_url} alt="" className="w-3.5 h-3.5 rounded-full" />
+              {pr.user.login}
             </span>
-            
-            {comments > 0 && (
-              <span className="flex items-center gap-1">
-                <MessageSquare className="w-4 h-4" />
-                {comments}
-              </span>
-            )}
-            
-            <span className="flex items-center gap-1"
-                  style={{ color: allChecksPassed ? 'var(--success)' : 'var(--warning)' }}>
-              <CheckCircle className="w-4 h-4" />
-              {checks.passed}/{checks.total} checks
-            </span>
-            
-            <span>{updated}</span>
+            <span>{timeAgo(pr.updated_at)}</span>
           </div>
         </div>
+        {pr.comments > 0 && (
+          <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            <MessageSquare className="w-3 h-3" /> {pr.comments}
+          </span>
+        )}
       </div>
     </div>
   );
 };
+
+const FilterBtn: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className="px-3 py-1.5 text-xs font-medium transition-colors"
+    style={{
+      background: active ? 'var(--accent)' : 'var(--bg-secondary)',
+      color: active ? 'white' : 'var(--text-secondary)',
+    }}
+  >
+    {children}
+  </button>
+);
 
 export default PullRequests;

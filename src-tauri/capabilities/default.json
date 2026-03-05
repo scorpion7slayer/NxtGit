@@ -1,0 +1,19 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for NxtGit",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "store:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://api.github.com/**" },
+        { "url": "https://github.com/**" },
+        { "url": "https://api.openrouter.ai/**" },
+        { "url": "https://openrouter.ai/**" }
+      ]
+    }
+  ]
+}

@@ -37,8 +37,7 @@
     "copyright": "MIT",
     "macOS": {
       "frameworks": [],
-      "minimumSystemVersion": "14.0",
-      "license": "MIT"
+      "minimumSystemVersion": "14.0"
     },
     "icon": [
       "icons/32x32.png",

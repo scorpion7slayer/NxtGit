@@ -1,15 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  GitBranch, 
-  GitPullRequest, 
-  Bot, 
+import {
+  LayoutDashboard,
+  GitBranch,
+  GitPullRequest,
+  CircleDot,
+  MessageSquare,
   Settings,
   LogOut,
-  ChevronRight
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import logo from '../assets/logo.svg';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,72 +21,55 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-      {/* Sidebar */}
-      <aside className="w-64 glass m-4 mr-0 flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                 style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)' }}>
-              <GitBranch className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
-                NxtGit
-              </h1>
-              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>AI-powered</p>
-            </div>
+      <aside className="w-56 flex flex-col border-r" style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
+        {/* App header */}
+        <div className="px-4 pt-5 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center gap-2.5">
+            <img src={logo} alt="NxtGit" className="w-7 h-7 rounded-md" />
+            <span className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>
+              NxtGit
+            </span>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
+        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+          <NavItem to="/" icon={LayoutDashboard} label="Dashboard" end />
           <NavItem to="/repos" icon={GitBranch} label="Repositories" />
+          <NavItem to="/issues" icon={CircleDot} label="Issues" />
           <NavItem to="/prs" icon={GitPullRequest} label="Pull Requests" />
-          <NavItem to="/ai-review" icon={Bot} label="AI Review" />
+          <NavItem to="/ai-review" icon={MessageSquare} label="AI Review" />
         </nav>
 
         {/* User section */}
-        <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-3 mb-4 px-3">
-            <img 
-              src={user?.avatar_url || 'https://github.com/github.png'} 
-              alt="Avatar" 
-              className="w-8 h-8 rounded-full"
+        <div className="px-2 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center gap-2.5 px-2.5 mb-3">
+            <img
+              src={user?.avatar_url || 'https://github.com/github.png'}
+              alt="Avatar"
+              className="w-6 h-6 rounded-full"
             />
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                {user?.name || user?.login || 'User'}
-              </p>
-              <p className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>
-                @{user?.login || 'username'}
+              <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                {user?.login || 'User'}
               </p>
             </div>
           </div>
-          
-          <NavLink 
-            to="/settings" 
-            className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </NavLink>
-          
-          <button 
+
+          <NavItem to="/settings" icon={Settings} label="Settings" />
+          <button
             onClick={logout}
-            className="sidebar-item w-full text-left"
-            style={{ color: 'var(--error)' }}
+            className="nav-item w-full text-left"
+            style={{ color: 'var(--text-secondary)' }}
           >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
+            <LogOut className="w-4 h-4" />
+            <span>Sign out</span>
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 m-4 ml-0 overflow-hidden">
-        <div className="h-full glass-panel overflow-auto">
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full overflow-auto" style={{ background: 'var(--bg-primary)' }}>
           {children}
         </div>
       </main>
@@ -97,16 +81,17 @@ interface NavItemProps {
   to: string;
   icon: React.ElementType;
   label: string;
+  end?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label }) => (
-  <NavLink 
-    to={to} 
-    className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
+const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, end }) => (
+  <NavLink
+    to={to}
+    end={end}
+    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
   >
-    <Icon className="w-5 h-5" />
-    <span className="flex-1">{label}</span>
-    <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+    <Icon className="w-4 h-4" />
+    <span>{label}</span>
   </NavLink>
 );
 
