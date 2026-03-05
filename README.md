@@ -1,88 +1,115 @@
 # NxtGit 🚀
 
-AI-native Git client for macOS with Liquid Glass UI.
+AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI chat, and GitHub integration.
 
 ![NxtGit](screenshot.png)
 
 ## ✨ Features
 
-- 🤖 **AI-Powered PR Descriptions** - Generate professional PR descriptions with OpenRouter
-- 🔍 **Smart Code Review** - Get AI code reviews before submitting
-- 🎨 **Liquid Glass UI** - Native macOS design with transparency and blur effects
-- 🔐 **GitHub Integration** - Seamless OAuth authentication
-- ⚡ **Lightning Fast** - Built with Tauri (Rust + Web technologies)
-- 📝 **PR Management** - View, create and manage pull requests
+- 💬 **AI Chat** — Full conversational chat with streaming, thinking blocks, file & repo attachments
+- 🧠 **Extended Thinking** — See the AI's reasoning process in real-time (Anthropic, DeepSeek, OpenAI o-series, Ollama)
+- 🤖 **8 AI Providers** — GitHub Copilot, OpenRouter, Anthropic, OpenAI, Ollama (local & cloud), Moonshot, Kilocode, MiniMax
+- 🔍 **Smart Code Review** — AI-powered code reviews with streaming markdown output
+- 🎨 **Liquid Glass UI** — Light/dark mode with transparency, blur effects, and CSS custom properties
+- 🔐 **GitHub OAuth** — Device flow authentication for GitHub + separate Copilot OAuth
+- 📁 **Repository Browser** — Browse repos, issues, PRs, and file trees without cloning
+- 💾 **Persistent Chat** — Conversations saved locally, window state remembered across sessions
+- 🏠 **Ollama Support** — Local models with configurable URL, or Ollama Cloud with API key
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: Rust (Tauri)
-- **UI**: Liquid Glass design language (macOS native)
-- **AI**: OpenRouter API (multi-model support)
-- **API**: GitHub REST & GraphQL APIs
+| Layer | Technology |
+| ----- | ---------- |
+| **Frontend** | React 18 + TypeScript + Tailwind CSS 3 + Vite 5 |
+| **Backend** | Rust (Tauri v2) |
+| **State** | Zustand v4 + Tauri Store (persistent) |
+| **AI Streaming** | Direct SSE/NDJSON via ReadableStream |
+| **Markdown** | react-markdown + remark-gfm + react-syntax-highlighter |
+| **Design** | Liquid Glass (CSS custom properties, light/dark auto) |
+
+## 🤖 AI Providers
+
+| Provider | Thinking Support | Auth |
+| -------- | --------------- | ---- |
+| **GitHub Copilot** | o-series `reasoning_content` | OAuth device flow |
+| **OpenRouter** | `reasoning_details` + `reasoning` budget | API key |
+| **Anthropic** | Extended thinking (`thinking` blocks) | API key |
+| **OpenAI** | `reasoning_effort` for o1/o3/o4 | API key |
+| **Ollama** | `think: true` (native NDJSON) | Optional (cloud) |
+| **Moonshot** | `<think>` tags | API key |
+| **Kilocode** | — | API key |
+| **MiniMax** | — | API key |
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- macOS 14.0+
+- Windows 10+ / macOS 14+
 - Node.js 18+
-- Rust toolchain
+- Rust toolchain (edition 2021, 1.70+)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/scorpion7slayer/NxtGit.git
 cd NxtGit
 
-# Install dependencies
-npm install
-
-# Run in development mode
-npm run tauri-dev
-
-# Build for production
-npm run tauri-build
+npm install          # Install frontend dependencies
+npm run tauri-dev    # Dev mode: Vite + Tauri Rust backend
+npm run tauri-build  # Production build
 ```
 
-### GitHub OAuth Setup
+### Configuration
+
+**GitHub OAuth** — Create a GitHub OAuth App with Device Flow enabled:
 
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
-2. Create a new OAuth App
-3. Set callback URL to `http://localhost:1420/auth/callback`
-4. Copy Client ID and Client Secret to the app settings
+2. Create a new OAuth App, enable Device Flow
+3. Set `VITE_GITHUB_CLIENT_ID` in your `.env`
 
-### OpenRouter Setup
+**AI Providers** — Configure in Settings:
 
-1. Get your API key from [OpenRouter](https://openrouter.ai/)
-2. Add it in the app Settings → OpenRouter AI
+- API keys are stored locally via Tauri Store (never shared)
+- GitHub Copilot uses a separate OAuth device flow
+- Ollama works locally without a key; add one for Ollama Cloud
 
 ## 📝 Usage
 
-1. **Login with GitHub** - Authenticate securely with OAuth
-2. **Browse Repositories** - View all your repos without cloning
-3. **Manage PRs** - Create and review pull requests
-4. **AI Review** - Paste code and get intelligent suggestions
-5. **Generate Descriptions** - Let AI write your PR descriptions
+1. **Login** — Authenticate with GitHub via device flow
+2. **Chat** — Open AI Chat, pick a provider/model, start a conversation
+3. **Attach** — Attach files or entire repo trees (sends only file paths, not content)
+4. **Review** — Paste code in AI Review for streaming code analysis
+5. **Browse** — Explore repositories, issues, and pull requests
 
 ## 🏗️ Architecture
 
-```
+```text
 NxtGit/
-├── src/                    # React frontend
-│   ├── components/         # UI components
-│   ├── stores/            # Zustand state management
-│   └── lib/               # Utilities and API clients
-├── src-tauri/             # Rust backend
-│   ├── src/               # Rust source code
-│   └── Cargo.toml         # Rust dependencies
-└── package.json           # Node dependencies
+├── src/                        # React frontend
+│   ├── components/             # UI components (Chat, Dashboard, Settings, ...)
+│   ├── stores/                 # Zustand stores (auth, persisted via Tauri Store)
+│   └── lib/
+│       ├── ai.ts               # AI providers, streaming, thinking, Copilot OAuth
+│       └── github.ts           # GitHub API client (repos, PRs, issues, trees)
+├── src-tauri/                  # Rust backend
+│   ├── src/lib.rs              # Plugin registration (http, shell, store, window-state)
+│   ├── tauri.conf.json         # Window config, CSP, bundle targets
+│   └── capabilities/           # Permission allowlists (HTTP domains, plugins)
+└── package.json
 ```
+
+## 🔒 Security
+
+- CSP restricted to whitelisted API domains
+- HTTP permissions via Tauri capability allowlists
+- OAuth `verification_uri` validated before opening
+- Ollama URL validated (http/https only) to prevent SSRF
+- Tokens stored via Tauri Store (OS-level secure storage), not localStorage
+- No `eval`, no `dangerouslySetInnerHTML`
 
 ## 🤝 Contributing
 
-This project is built for [Flavortown](https://flavortown.hackclub.com/) - a Hack Club program for high schoolers.
+Built for [Flavortown](https://flavortown.hackclub.com/) — a Hack Club program for high schoolers.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -92,13 +119,14 @@ This project is built for [Flavortown](https://flavortown.hackclub.com/) - a Hac
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file
+MIT License — see [LICENSE](LICENSE)
 
 ## 🙏 Acknowledgments
 
-- [Tauri](https://tauri.app/) - For the amazing desktop framework
-- [OpenRouter](https://openrouter.ai/) - For AI model access
-- [Hack Club](https://hackclub.com/) - For the Flavortown program
+- [Tauri](https://tauri.app/) — Desktop framework
+- [OpenRouter](https://openrouter.ai/) — Unified AI model access
+- [Ollama](https://ollama.com/) — Local LLM runtime
+- [Hack Club](https://hackclub.com/) — Flavortown program
 
 ---
 
