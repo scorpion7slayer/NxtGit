@@ -71,7 +71,10 @@ const ThinkingBlock: React.FC<{ thinking: string; isStreaming: boolean }> = ({
     // Auto-scroll thinking content during streaming
     useEffect(() => {
         if (isStreaming && expanded && thinkingEndRef.current) {
-            thinkingEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            thinkingEndRef.current.scrollIntoView({
+                behavior: "smooth",
+                block: "end",
+            });
         }
     }, [thinking, isStreaming, expanded]);
 
@@ -88,21 +91,39 @@ const ThinkingBlock: React.FC<{ thinking: string; isStreaming: boolean }> = ({
                 }}
             >
                 <Brain
-                    className={`w-3.5 h-3.5 ${isStreaming ? 'animate-pulse' : ''}`}
-                    style={{ color: isStreaming ? 'var(--accent)' : undefined }}
+                    className={`w-3.5 h-3.5 ${isStreaming ? "animate-pulse" : ""}`}
+                    style={{ color: isStreaming ? "var(--accent)" : undefined }}
                 />
                 <span>
                     {isStreaming
                         ? thinking
-                            ? 'Thinking...'
-                            : 'Processing...'
-                        : 'Thought process'}
+                            ? "Thinking..."
+                            : "Processing..."
+                        : "Thought process"}
                 </span>
                 {isStreaming && !thinking && (
                     <span className="flex gap-0.5 ml-1">
-                        <span className="w-1 h-1 rounded-full animate-bounce" style={{ background: 'var(--text-tertiary)', animationDelay: '0ms' }} />
-                        <span className="w-1 h-1 rounded-full animate-bounce" style={{ background: 'var(--text-tertiary)', animationDelay: '150ms' }} />
-                        <span className="w-1 h-1 rounded-full animate-bounce" style={{ background: 'var(--text-tertiary)', animationDelay: '300ms' }} />
+                        <span
+                            className="w-1 h-1 rounded-full animate-bounce"
+                            style={{
+                                background: "var(--text-tertiary)",
+                                animationDelay: "0ms",
+                            }}
+                        />
+                        <span
+                            className="w-1 h-1 rounded-full animate-bounce"
+                            style={{
+                                background: "var(--text-tertiary)",
+                                animationDelay: "150ms",
+                            }}
+                        />
+                        <span
+                            className="w-1 h-1 rounded-full animate-bounce"
+                            style={{
+                                background: "var(--text-tertiary)",
+                                animationDelay: "300ms",
+                            }}
+                        />
                     </span>
                 )}
                 <ChevronRight
@@ -116,7 +137,7 @@ const ThinkingBlock: React.FC<{ thinking: string; isStreaming: boolean }> = ({
                     style={{
                         background: "var(--bg-secondary)",
                         color: "var(--text-tertiary)",
-                        borderLeft: `2px solid ${isStreaming ? 'var(--accent)' : 'var(--border)'}`,
+                        borderLeft: `2px solid ${isStreaming ? "var(--accent)" : "var(--border)"}`,
                     }}
                 >
                     <span className="whitespace-pre-wrap">{thinking}</span>
@@ -1019,7 +1040,9 @@ Guidelines:
                                         {msg.role === "assistant" &&
                                             (thinkingMap[i] ||
                                                 (streaming &&
-                                                    i === messages.length - 1)) && (
+                                                    i ===
+                                                        messages.length -
+                                                            1)) && (
                                                 <ThinkingBlock
                                                     thinking={
                                                         thinkingMap[i] ||
@@ -1036,32 +1059,35 @@ Guidelines:
                                             )}
 
                                         {/* Message bubble — hide when assistant has no content yet */}
-                                        {(msg.role !== "assistant" || msg.content) && (
-                                        <div
-                                            className="text-sm rounded-lg px-3 py-2"
-                                            style={{
-                                                background:
-                                                    msg.role === "user"
-                                                        ? "var(--accent)"
-                                                        : "var(--bg-tertiary)",
-                                                color:
-                                                    msg.role === "user"
-                                                        ? "white"
-                                                        : "var(--text-primary)",
-                                            }}
-                                        >
-                                            {msg.role === "assistant" ? (
-                                                msg.content ? (
-                                                    <MarkdownRenderer
-                                                        content={msg.content}
-                                                    />
-                                                ) : null
-                                            ) : (
-                                                <span className="whitespace-pre-wrap">
-                                                    {msg.content}
-                                                </span>
-                                            )}
-                                        </div>
+                                        {(msg.role !== "assistant" ||
+                                            msg.content) && (
+                                            <div
+                                                className="text-sm rounded-lg px-3 py-2"
+                                                style={{
+                                                    background:
+                                                        msg.role === "user"
+                                                            ? "var(--accent)"
+                                                            : "var(--bg-tertiary)",
+                                                    color:
+                                                        msg.role === "user"
+                                                            ? "white"
+                                                            : "var(--text-primary)",
+                                                }}
+                                            >
+                                                {msg.role === "assistant" ? (
+                                                    msg.content ? (
+                                                        <MarkdownRenderer
+                                                            content={
+                                                                msg.content
+                                                            }
+                                                        />
+                                                    ) : null
+                                                ) : (
+                                                    <span className="whitespace-pre-wrap">
+                                                        {msg.content}
+                                                    </span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </div>

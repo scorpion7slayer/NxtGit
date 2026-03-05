@@ -419,7 +419,11 @@ export async function fetchProviderModels(
         // Ollama uses { models: [{ name, ... }] } for /api/tags
         if (providerId === "ollama") {
             const ollamaData = raw as {
-                models?: { name: string; modified_at?: string; size?: number }[];
+                models?: {
+                    name: string;
+                    modified_at?: string;
+                    size?: number;
+                }[];
             };
             const list = ollamaData.models;
             if (!Array.isArray(list) || list.length === 0)
@@ -579,9 +583,7 @@ function buildBody(
         return JSON.stringify({
             model: modelId,
             stream: true,
-            ...(supportsReasoning
-                ? { reasoning: { max_tokens: 8000 } }
-                : {}),
+            ...(supportsReasoning ? { reasoning: { max_tokens: 8000 } } : {}),
             messages: messages.map((m) => ({
                 role: m.role,
                 content: m.content,
@@ -754,8 +756,7 @@ async function streamOpenAISSE(
                         continue;
                     }
                     // OpenRouter: reasoning_details array
-                    const details =
-                        obj.choices?.[0]?.delta?.reasoning_details;
+                    const details = obj.choices?.[0]?.delta?.reasoning_details;
                     if (details && Array.isArray(details)) {
                         for (const d of details) {
                             const rText = d.text || d.summary || "";
@@ -877,10 +878,16 @@ async function streamAnthropicSSE(
                         };
                     };
                     if (obj.type === "content_block_delta") {
-                        if (obj.delta?.type === "thinking_delta" && obj.delta.thinking) {
+                        if (
+                            obj.delta?.type === "thinking_delta" &&
+                            obj.delta.thinking
+                        ) {
                             thinking += obj.delta.thinking;
                             callbacks.onThinking?.(obj.delta.thinking);
-                        } else if (obj.delta?.type === "text_delta" && obj.delta.text) {
+                        } else if (
+                            obj.delta?.type === "text_delta" &&
+                            obj.delta.text
+                        ) {
                             content += obj.delta.text;
                             callbacks.onChunk(obj.delta.text);
                         }
@@ -966,7 +973,10 @@ function parseSyncAnthropicSSE(
                 };
             };
             if (obj.type === "content_block_delta") {
-                if (obj.delta?.type === "thinking_delta" && obj.delta.thinking) {
+                if (
+                    obj.delta?.type === "thinking_delta" &&
+                    obj.delta.thinking
+                ) {
                     thinking += obj.delta.thinking;
                     callbacks.onThinking?.(obj.delta.thinking);
                 } else if (obj.delta?.type === "text_delta" && obj.delta.text) {

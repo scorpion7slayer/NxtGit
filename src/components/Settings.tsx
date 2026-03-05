@@ -49,7 +49,9 @@ const Settings: React.FC = () => {
             })
             .catch(() => {});
 
-        getOllamaBaseURL().then(setOllamaURL).catch(() => {});
+        getOllamaBaseURL()
+            .then(setOllamaURL)
+            .catch(() => {});
 
         fetchSubscription()
             .then(setSubscription)
@@ -482,7 +484,11 @@ const Settings: React.FC = () => {
                                                 e.target.value,
                                             )
                                         }
-                                        placeholder={provider.apiKeyOptional ? "Optional — only for Ollama Cloud" : provider.placeholder}
+                                        placeholder={
+                                            provider.apiKeyOptional
+                                                ? "Optional — only for Ollama Cloud"
+                                                : provider.placeholder
+                                        }
                                         className="input-glass pl-9 w-full text-sm py-2"
                                     />
                                 </div>
