@@ -1,0 +1,30 @@
+[package]
+name = "nxtgit"
+version = "0.1.0"
+description = "AI-native Git client for macOS"
+authors = ["scorpion7slayer"]
+edition = "2021"
+rust-version = "1.70"
+
+[lib]
+name = "nxtgit_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "nxtgit"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.0.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0.0", features = [] }
+tauri-plugin-shell = "2.0.0"
+tauri-plugin-http = "2.0.0"
+tauri-plugin-store = "2.0.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
