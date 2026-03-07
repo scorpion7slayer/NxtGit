@@ -112,3 +112,294 @@
 .hljs {
   background: transparent !important;
 }
+
+/* =========================================
+   Apple Liquid Glass — macOS only
+   Recreates the WWDC 2025 Liquid Glass design:
+   - 3-layer system: Highlight / Shadow / Illumination
+   - Moderate blur (16-20px) + native vibrancy behind window
+   - Strong specular highlights (inset white edge)
+   - Spring-based transitions
+   - Pill shapes, floating forms
+   ========================================= */
+
+/* --- Foundation: transparent so native vibrancy shows --- */
+html.platform-macos,
+html.platform-macos body {
+  background: transparent !important;
+}
+
+/* --- Glass CSS variables (light) --- */
+html.platform-macos {
+  --bg-secondary: rgba(255, 255, 255, 0.15);
+  --bg-tertiary: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.25);
+
+  /* 3-layer glass system */
+  --glass-blur: blur(16px) saturate(180%);
+  --glass-highlight: inset 1px 1px 0 rgba(255, 255, 255, 0.6),
+                     inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+  --glass-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.05);
+  --glass-depth: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --glass-border: 0.5px solid rgba(255, 255, 255, 0.3);
+
+  /* Motion */
+  --spring: cubic-bezier(0.175, 0.885, 0.32, 2.2);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Glass CSS variables (dark) --- */
+@media (prefers-color-scheme: dark) {
+  html.platform-macos {
+    --bg-secondary: rgba(255, 255, 255, 0.06);
+    --bg-tertiary: rgba(255, 255, 255, 0.03);
+    --border: rgba(255, 255, 255, 0.08);
+    --glass-highlight: inset 1px 1px 0 rgba(255, 255, 255, 0.1),
+                       inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+    --glass-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.3);
+    --glass-depth: 0 4px 24px rgba(0, 0, 0, 0.2);
+    --glass-border: 0.5px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* --- Layout regions --- */
+html.platform-macos .layout-root {
+  background: transparent !important;
+}
+
+html.platform-macos .layout-sidebar {
+  background: transparent !important;
+  border-right: 0.5px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html.platform-macos .layout-sidebar {
+    border-right-color: rgba(255, 255, 255, 0.05) !important;
+  }
+}
+
+/* Main content: semi-opaque glass for readability */
+html.platform-macos .layout-main {
+  background: rgba(251, 251, 253, 0.7) !important;
+  backdrop-filter: blur(40px) saturate(120%);
+  -webkit-backdrop-filter: blur(40px) saturate(120%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html.platform-macos .layout-main {
+    background: rgba(13, 17, 23, 0.7) !important;
+  }
+}
+
+/* --- Glass cards / panels --- */
+html.platform-macos .border.rounded-lg,
+html.platform-macos .border.rounded-xl {
+  border: var(--glass-border) !important;
+  border-radius: 20px !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight), var(--glass-shadow), var(--glass-depth);
+  transition: box-shadow 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+html.platform-macos .border.rounded-xl {
+  border-radius: 24px !important;
+}
+
+/* --- Pill nav items with spring motion --- */
+html.platform-macos .nav-item {
+  border-radius: 12px;
+  transition: all 0.25s var(--ease);
+}
+
+html.platform-macos .nav-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.platform-macos .nav-item.active {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+@media (prefers-color-scheme: dark) {
+  html.platform-macos .nav-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  html.platform-macos .nav-item.active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* --- Capsule / pill buttons --- */
+html.platform-macos .btn-primary {
+  border-radius: 20px;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25),
+              0 2px 12px rgba(0, 122, 255, 0.3);
+  transition: all 0.2s var(--ease);
+}
+
+html.platform-macos .btn-primary:hover {
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.3),
+              0 4px 20px rgba(0, 122, 255, 0.4);
+}
+
+html.platform-macos .btn-primary:active {
+  transform: scale(0.97);
+}
+
+html.platform-macos .btn-secondary {
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  border: var(--glass-border);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: var(--glass-highlight);
+  transition: all 0.2s var(--ease);
+}
+
+html.platform-macos .btn-secondary:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: var(--glass-highlight), 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+html.platform-macos .btn-secondary:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-color-scheme: dark) {
+  html.platform-macos .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: var(--glass-highlight), 0 0 12px rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* --- Glass inputs --- */
+html.platform-macos .input-glass {
+  border-radius: 14px;
+  border: var(--glass-border);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: var(--glass-highlight);
+  transition: all 0.2s var(--ease);
+}
+
+html.platform-macos .input-glass:focus {
+  border-color: rgba(0, 122, 255, 0.5);
+  box-shadow: var(--glass-highlight), 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+/* --- Sidebar header / drag region --- */
+.sidebar-header {
+  padding-top: 20px;
+}
+
+html.platform-macos .sidebar-header {
+  padding-top: 42px;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* --- Dividers --- */
+html.platform-macos .divide-y > :not(:first-child) {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.platform-macos .border-b {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+html.platform-macos .border-t {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html.platform-macos .divide-y > :not(:first-child),
+  html.platform-macos .border-b,
+  html.platform-macos .border-t {
+    border-color: rgba(255, 255, 255, 0.05) !important;
+  }
+}
+
+/* --- Scrollbar --- */
+html.platform-macos ::-webkit-scrollbar {
+  width: 6px;
+}
+
+html.platform-macos ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.platform-macos ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+
+html.platform-macos ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  html.platform-macos ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  html.platform-macos ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* --- Login page glass --- */
+html.platform-macos .login-page {
+  background: transparent !important;
+}
+
+.login-card {
+  border-radius: 28px;
+  padding: 2.5rem;
+}
+
+html:not(.platform-macos) .login-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+
+html.platform-macos .login-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow),
+              0 8px 40px rgba(0, 0, 0, 0.06),
+              0 30px 80px rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  html.platform-macos .login-card {
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: var(--glass-highlight), var(--glass-shadow),
+                0 8px 40px rgba(0, 0, 0, 0.2),
+                0 30px 80px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* --- Login drag region --- */
+.login-drag-region {
+  display: none;
+}
+
+html.platform-macos .login-drag-region {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  -webkit-app-region: drag;
+  z-index: 100;
+}

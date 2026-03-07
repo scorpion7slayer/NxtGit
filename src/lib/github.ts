@@ -80,6 +80,9 @@ export interface GitHubEvent {
         pull_request?: { title: string };
         commits?: { message: string }[];
         ref?: string;
+        ref_type?: string;
+        issue?: { title: string };
+        release?: { tag_name: string };
     };
 }
 
@@ -354,6 +357,149 @@ export async function fetchPRFiles(
 ): Promise<GitHubPRFile[]> {
     return ghFetch<GitHubPRFile[]>(
         `/repos/${owner}/${name}/pulls/${number}/files`,
+    );
+}
+
+// --- Write Operations ---
+
+async function ghPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}${path}`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/0.1.0",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+    return response.json();
+}
+
+async function ghPatch<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}${path}`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/0.1.0",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+    return response.json();
+}
+
+async function ghPut<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}${path}`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/0.1.0",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+    return response.json();
+}
+
+export async function createIssue(
+    owner: string,
+    name: string,
+    title: string,
+    body: string,
+    labels?: string[],
+): Promise<GitHubIssue> {
+    return ghPost<GitHubIssue>(`/repos/${owner}/${name}/issues`, {
+        title,
+        body,
+        ...(labels?.length ? { labels } : {}),
+    });
+}
+
+export async function createComment(
+    owner: string,
+    name: string,
+    number: number,
+    body: string,
+): Promise<GitHubComment> {
+    return ghPost<GitHubComment>(
+        `/repos/${owner}/${name}/issues/${number}/comments`,
+        { body },
+    );
+}
+
+export async function updateIssueState(
+    owner: string,
+    name: string,
+    number: number,
+    state: "open" | "closed",
+): Promise<GitHubIssue> {
+    return ghPatch<GitHubIssue>(`/repos/${owner}/${name}/issues/${number}`, { state });
+}
+
+export async function mergePR(
+    owner: string,
+    name: string,
+    number: number,
+    method: "merge" | "squash" | "rebase" = "merge",
+): Promise<{ merged: boolean; message: string }> {
+    return ghPut<{ merged: boolean; message: string }>(
+        `/repos/${owner}/${name}/pulls/${number}/merge`,
+        { merge_method: method },
+    );
+}
+
+export async function createPR(
+    owner: string,
+    name: string,
+    title: string,
+    body: string,
+    head: string,
+    base: string,
+): Promise<GitHubRepoPR> {
+    return ghPost<GitHubRepoPR>(`/repos/${owner}/${name}/pulls`, {
+        title,
+        body,
+        head,
+        base,
+    });
+}
+
+export async function addLabels(
+    owner: string,
+    name: string,
+    number: number,
+    labels: string[],
+): Promise<{ name: string; color: string }[]> {
+    return ghPost<{ name: string; color: string }[]>(
+        `/repos/${owner}/${name}/issues/${number}/labels`,
+        { labels },
+    );
+}
+
+export async function fetchRepoBranches(
+    owner: string,
+    name: string,
+): Promise<{ name: string; protected: boolean }[]> {
+    return ghFetch<{ name: string; protected: boolean }[]>(
+        `/repos/${owner}/${name}/branches?per_page=100`,
     );
 }
 

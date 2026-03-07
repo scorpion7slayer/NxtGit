@@ -11,6 +11,7 @@ import PRDetail from "./components/PRDetail";
 import AIReview from "./components/AIReview";
 import Chat from "./components/Chat";
 import Settings from "./components/Settings";
+import GitHubStatus from "./components/GitHubStatus";
 import Login from "./components/Login";
 import { useAuthStore } from "./stores/authStore";
 
@@ -40,6 +41,7 @@ function App() {
                 <Route path="/pr/:owner/:name/:number" element={<PRDetail />} />
                 <Route path="/ai-review" element={<AIReview />} />
                 <Route path="/chat" element={<Chat />} />
+                <Route path="/status" element={<GitHubStatus />} />
                 <Route path="/settings" element={<Settings />} />
             </Routes>
         </Layout>

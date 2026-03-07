@@ -7,6 +7,7 @@ import {
     CircleDot,
     MessageSquare,
     Bot,
+    Activity,
     Settings,
     LogOut,
 } from "lucide-react";
@@ -22,11 +23,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     return (
         <div
-            className="h-screen flex overflow-hidden"
+            className="h-screen flex overflow-hidden layout-root"
             style={{ background: "var(--bg-primary)" }}
         >
             <aside
-                className="w-56 flex flex-col border-r"
+                className="w-56 flex flex-col border-r layout-sidebar"
                 style={{
                     borderColor: "var(--border)",
                     background: "var(--bg-secondary)",
@@ -34,7 +35,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
                 {/* App header */}
                 <div
-                    className="px-4 pt-5 pb-4 border-b"
+                    className="px-4 pb-4 border-b sidebar-header"
+                    data-tauri-drag-region
                     style={{ borderColor: "var(--border)" }}
                 >
                     <div className="flex items-center gap-2.5">
@@ -77,6 +79,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         icon={MessageSquare}
                         label="AI Review"
                     />
+                    <NavItem
+                        to="/status"
+                        icon={Activity}
+                        label="GitHub Status"
+                    />
                 </nav>
 
                 {/* User section */}
@@ -117,7 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             <main className="flex-1 overflow-hidden">
                 <div
-                    className="h-full overflow-auto"
+                    className="h-full overflow-auto layout-main"
                     style={{ background: "var(--bg-primary)" }}
                 >
                     {children}

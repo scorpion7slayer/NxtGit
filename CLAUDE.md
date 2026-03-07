@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NxtGit is an AI-native Git client for macOS built with Tauri v2 (Rust backend + React/TypeScript frontend). It features a "Liquid Glass" UI design language with transparency/blur effects, GitHub OAuth integration, and AI-powered code review/PR description generation via OpenRouter.
+NxtGit is an AI-native Git client for macOS and Windows built with Tauri v2 (Rust backend + React/TypeScript frontend). It features a "Liquid Glass" UI design language on macOS (native vibrancy + transparent window + backdrop-filter) with solid fallbacks on Windows. Includes GitHub OAuth integration and AI-powered code review/PR description generation via OpenRouter.
 
 ## Build & Development Commands
 
@@ -36,9 +36,13 @@ No test runner or linter is currently configured.
 - Config in `tauri.conf.json`: dev server at `localhost:1420`, transparent window with overlay title bar, CSP restricted to GitHub API and OpenRouter API domains
 
 ### Design System
-- "Liquid Glass" style defined entirely via CSS custom properties in `src/index.css`
+- "Liquid Glass" on macOS: native `sidebar` vibrancy effect via Tauri `windowEffects`, transparent window, overlay title bar, `backdrop-filter: blur()` on cards/panels
+- Platform detection via `html.platform-macos` class (set in `main.tsx` from user agent). All macOS-specific glass CSS is scoped under this class.
+- On Windows/other: solid opaque backgrounds, standard title bar, no backdrop-filter
 - Light/dark mode via `prefers-color-scheme` media query — variables switch automatically
-- Key CSS classes: `.glass` (backdrop blur + semi-transparent bg), `.glass-panel` (glass + rounded corners), `.btn-primary`, `.btn-secondary`, `.input-glass`, `.sidebar-item`
+- Key layout classes: `.layout-root`, `.layout-sidebar`, `.layout-main`, `.sidebar-header` (drag region on macOS)
+- Key CSS classes: `.btn-primary`, `.btn-secondary`, `.input-glass`, `.nav-item`, `.login-card`, `.login-page`
+- Cards use `.border.rounded-lg` / `.border.rounded-xl` pattern — these automatically get glass effect on macOS
 - Colors follow Apple HIG conventions: `--accent: #007AFF`, `--success: #34C759`, `--warning: #FF9500`, `--error: #FF3B30`
 - When adding UI, use CSS variables (`var(--text-primary)`, `var(--bg-tertiary)`, etc.) instead of hardcoded colors
 

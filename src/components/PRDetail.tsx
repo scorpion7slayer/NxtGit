@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, GitPullRequest, GitMerge, Loader2, FileCode, Plus, Minus } from 'lucide-react';
-import { fetchPRDetail, fetchPRFiles, fetchIssueComments, timeAgo, type GitHubPRDetail, type GitHubPRFile, type GitHubComment } from '../lib/github';
+import { ArrowLeft, GitPullRequest, GitMerge, Loader2, FileCode, Plus, Minus, Send, Check } from 'lucide-react';
+import {
+  fetchPRDetail, fetchPRFiles, fetchIssueComments, createComment, mergePR,
+  timeAgo, type GitHubPRDetail, type GitHubPRFile, type GitHubComment,
+} from '../lib/github';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const PRDetailPage: React.FC = () => {
   const { owner, name, number } = useParams<{ owner: string; name: string; number: string }>();
@@ -11,6 +15,11 @@ const PRDetailPage: React.FC = () => {
   const [comments, setComments] = useState<GitHubComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'conversation' | 'files'>('conversation');
+  const [newComment, setNewComment] = useState('');
+  const [posting, setPosting] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [mergeMethod, setMergeMethod] = useState<'merge' | 'squash' | 'rebase'>('merge');
+  const [mergeError, setMergeError] = useState('');
 
   useEffect(() => {
     if (!owner || !name || !number) return;
@@ -23,6 +32,31 @@ const PRDetailPage: React.FC = () => {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [owner, name, number]);
+
+  const handleComment = async () => {
+    if (!owner || !name || !number || !newComment.trim()) return;
+    setPosting(true);
+    try {
+      const c = await createComment(owner, name, parseInt(number), newComment.trim());
+      setComments(prev => [...prev, c]);
+      setNewComment('');
+    } catch {}
+    setPosting(false);
+  };
+
+  const handleMerge = async () => {
+    if (!owner || !name || !number) return;
+    setMerging(true);
+    setMergeError('');
+    try {
+      await mergePR(owner, name, parseInt(number), mergeMethod);
+      const updated = await fetchPRDetail(owner, name, parseInt(number));
+      setPR(updated);
+    } catch (e) {
+      setMergeError(e instanceof Error ? e.message : 'Merge failed');
+    }
+    setMerging(false);
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-full"><Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--text-tertiary)' }} /></div>;
@@ -64,6 +98,39 @@ const PRDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Merge panel */}
+      {pr.state === 'open' && !pr.merged && (
+        <div className="border rounded-lg p-4 mb-4 flex items-center gap-3 flex-wrap"
+             style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
+          <select
+            value={mergeMethod}
+            onChange={e => setMergeMethod(e.target.value as 'merge' | 'squash' | 'rebase')}
+            className="input-glass text-xs py-1.5 px-2"
+            style={{ width: 'auto' }}
+          >
+            <option value="merge">Merge commit</option>
+            <option value="squash">Squash and merge</option>
+            <option value="rebase">Rebase and merge</option>
+          </select>
+          <button
+            onClick={handleMerge}
+            disabled={merging}
+            className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-4"
+            style={{ background: '#238636' }}
+          >
+            {merging ? <Loader2 className="w-3 h-3 animate-spin" /> : <><GitMerge className="w-3 h-3" /> Merge pull request</>}
+          </button>
+          {mergeError && <span className="text-xs" style={{ color: 'var(--error)' }}>{mergeError}</span>}
+        </div>
+      )}
+
+      {pr.merged && (
+        <div className="border rounded-lg p-3 mb-4 flex items-center gap-2 text-sm"
+             style={{ borderColor: 'rgba(163, 113, 247, 0.3)', background: 'rgba(163, 113, 247, 0.08)', color: '#A371F7' }}>
+          <Check className="w-4 h-4" /> This pull request has been merged.
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-0 border-b mb-4" style={{ borderColor: 'var(--border)' }}>
         <button onClick={() => setActiveTab('conversation')}
@@ -81,9 +148,9 @@ const PRDetailPage: React.FC = () => {
       {activeTab === 'conversation' && (
         <div className="space-y-3">
           {pr.body && (
-            <div className="border rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed"
+            <div className="border rounded-lg p-4 text-sm leading-relaxed"
                  style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-              {pr.body}
+              <MarkdownRenderer content={pr.body} />
             </div>
           )}
           {comments.map(c => (
@@ -94,15 +161,33 @@ const PRDetailPage: React.FC = () => {
                 <span className="font-medium">{c.user.login}</span>
                 <span>{timeAgo(c.created_at)}</span>
               </div>
-              <div className="px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed"
+              <div className="px-4 py-3 text-sm leading-relaxed"
                    style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-                {c.body}
+                <MarkdownRenderer content={c.body} />
               </div>
             </div>
           ))}
-          {!pr.body && comments.length === 0 && (
-            <p className="text-sm text-center py-8" style={{ color: 'var(--text-tertiary)' }}>No comments yet.</p>
-          )}
+
+          {/* Comment form */}
+          <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+            <textarea
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              placeholder="Add a comment..."
+              rows={3}
+              className="input-glass w-full resize-none"
+              style={{ borderRadius: 0, border: 'none', borderBottom: '1px solid var(--border)' }}
+            />
+            <div className="flex items-center justify-end px-3 py-2" style={{ background: 'var(--bg-tertiary)' }}>
+              <button
+                onClick={handleComment}
+                disabled={posting || !newComment.trim()}
+                className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3"
+              >
+                {posting ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Send className="w-3 h-3" /> Comment</>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

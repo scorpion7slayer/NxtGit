@@ -1,6 +1,7 @@
 node_modules
 .grepai/
-.claude
+.claude/
 .env
 dist
 src-tauri/target
+.conductor/

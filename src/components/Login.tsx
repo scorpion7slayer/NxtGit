@@ -227,10 +227,11 @@ const Login: React.FC = () => {
 
     return (
         <div
-            className="min-h-screen flex items-center justify-center p-8"
+            className="min-h-screen flex items-center justify-center p-8 login-page"
             style={{ background: "var(--bg-primary)" }}
         >
-            <div className="max-w-sm w-full">
+            <div className="login-drag-region" />
+            <div className="max-w-sm w-full login-card">
                 <div className="text-center mb-8">
                     <img
                         src={logo}
