@@ -124,9 +124,6 @@ MIT License — see [LICENSE](LICENSE)
 ## 🙏 Acknowledgments
 
 - [Tauri](https://tauri.app/) — Desktop framework
-- [OpenRouter](https://openrouter.ai/) — Unified AI model access
-- [Ollama](https://ollama.com/) — Local LLM runtime
-- [Hack Club](https://hackclub.com/) — Flavortown program
 
 ---
 
