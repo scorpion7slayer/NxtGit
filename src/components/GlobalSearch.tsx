@@ -41,7 +41,7 @@ const GlobalSearch: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 w-full">
       <header className="mb-6">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           Search

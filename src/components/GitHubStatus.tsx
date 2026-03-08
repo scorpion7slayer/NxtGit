@@ -218,7 +218,7 @@ const GitHubStatus: React.FC = () => {
         .sort((a, b) => a.position - b.position);
 
     return (
-        <div className="p-6 max-w-4xl">
+        <div className="p-6 w-full">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
                     GitHub Status

@@ -117,7 +117,7 @@ const Settings: React.FC = () => {
     const keyProviders = AI_PROVIDERS.filter((p) => !p.usesOAuth);
 
     return (
-        <div className="p-6 max-w-3xl">
+        <div className="p-6 w-full">
             <header className="mb-6">
                 <h1
                     className="text-xl font-semibold"

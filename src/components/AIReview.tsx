@@ -81,7 +81,7 @@ const AIReview: React.FC = () => {
     };
 
     return (
-        <div className="p-6 h-full flex flex-col max-w-5xl">
+        <div className="p-6 h-full flex flex-col w-full">
             <header className="mb-4">
                 <h1
                     className="text-xl font-semibold"

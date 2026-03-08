@@ -67,7 +67,7 @@ const RepoDetail: React.FC = () => {
   ];
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 w-full">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => navigate('/repos')} className="p-1 rounded hover:bg-[var(--bg-tertiary)]">
           <ArrowLeft className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
@@ -160,8 +160,10 @@ const RepoDetail: React.FC = () => {
 
 const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','svg','webp','ico','bmp','avif']);
 const MARKDOWN_EXTS = new Set(['md','mdx','markdown']);
+const HTML_EXTS = new Set(['html','htm']);
 const isImageFile = (f: string) => IMAGE_EXTS.has(f.split('.').pop()?.toLowerCase() || '');
 const isMarkdownFile = (f: string) => MARKDOWN_EXTS.has(f.split('.').pop()?.toLowerCase() || '');
+const isHtmlFile = (f: string) => HTML_EXTS.has(f.split('.').pop()?.toLowerCase() || '');
 
 // --- Code Tab with highlight.js + edit/commit/preview ---
 
@@ -190,8 +192,9 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ ow
   const [newFileContent, setNewFileContent] = useState('');
   const [newFileCommitMsg, setNewFileCommitMsg] = useState('');
 
-  // Markdown preview & delete
+  // Markdown/HTML preview & delete
   const [showPreview, setShowPreview] = useState(false);
+  const [resolvedHtml, setResolvedHtml] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -247,6 +250,72 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ ow
   const lang = detectLanguage(fileName);
   const isImage = isImageFile(fileName);
   const isMd = isMarkdownFile(fileName);
+  const isHtml = isHtmlFile(fileName);
+
+  // Resolve linked CSS/JS for HTML preview
+  useEffect(() => {
+    if (!showPreview || !isHtml || fileContent === null) {
+      setResolvedHtml(null);
+      return;
+    }
+    let cancelled = false;
+    const dirPath = currentPath.split('/').slice(0, -1).join('/');
+    const resolvePath = (href: string) => {
+      if (/^https?:\/\/|^\/\//i.test(href)) return null; // absolute URL, skip
+      return dirPath ? `${dirPath}/${href}` : href;
+    };
+
+    (async () => {
+      let html = fileContent;
+
+      // Inline linked stylesheets: <link href="style.css" rel="stylesheet" />
+      const cssRegex = /<link\s+[^>]*href=["']([^"']+)["'][^>]*rel=["']stylesheet["'][^>]*\/?>|<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*\/?>/gi;
+      const cssMatches = [...html.matchAll(cssRegex)];
+      for (const match of cssMatches) {
+        const href = match[1] || match[2];
+        const repoPath = resolvePath(href);
+        if (!repoPath) continue;
+        try {
+          const css = await fetchFileContent(owner, name, repoPath, branch);
+          if (cancelled) return;
+          html = html.replace(match[0], `<style>/* ${href} */\n${css}</style>`);
+        } catch { /* skip if not found */ }
+      }
+
+      // Inline linked scripts: <script src="script.js"></script>
+      const jsRegex = /<script\s+[^>]*src=["']([^"']+)["'][^>]*><\/script>/gi;
+      const jsMatches = [...html.matchAll(jsRegex)];
+      for (const match of jsMatches) {
+        const src = match[1];
+        const repoPath = resolvePath(src);
+        if (!repoPath) continue;
+        try {
+          const js = await fetchFileContent(owner, name, repoPath, branch);
+          if (cancelled) return;
+          html = html.replace(match[0], `<script>/* ${src} */\n${js}<\/script>`);
+        } catch { /* skip if not found */ }
+      }
+
+      // Resolve relative image src to raw.githubusercontent.com
+      const rawBase = `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${dirPath ? dirPath + '/' : ''}`;
+      html = html.replace(
+        /(<img\s+[^>]*src=["'])(?!https?:\/\/|\/\/|data:)([^"']+)(["'])/gi,
+        `$1${rawBase}$2$3`
+      );
+
+      // Inject anchor fix: intercept hash links to scroll instead of navigate
+      const anchorFix = `<script>document.addEventListener('click',function(e){var a=e.target.closest('a');if(!a)return;var href=a.getAttribute('href');if(href&&href.startsWith('#')){e.preventDefault();var el=document.querySelector(href)||document.querySelector('[name="'+href.slice(1)+'"]');if(el)el.scrollIntoView({behavior:'smooth'});}});<\/script>`;
+      if (/<\/body>/i.test(html)) {
+        html = html.replace(/<\/body>/i, anchorFix + '</body>');
+      } else {
+        html += anchorFix;
+      }
+
+      if (!cancelled) setResolvedHtml(html);
+    })();
+
+    return () => { cancelled = true; };
+  }, [showPreview, isHtml, fileContent, owner, name, currentPath, branch]);
 
   const handleSave = async () => {
     if (!commitMsg.trim()) return;
@@ -362,7 +431,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ ow
               {lang && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-secondary)' }}>{lang}</span>}
             </div>
             <div className="flex items-center gap-1.5">
-              {isMd && !editing && (
+              {(isMd || isHtml) && !editing && (
                 <button onClick={() => setShowPreview(!showPreview)}
                         className="flex items-center gap-1 px-2 py-1 rounded text-[11px] hover:bg-[var(--bg-secondary)] transition-colors"
                         style={{ color: showPreview ? 'var(--accent)' : 'var(--text-secondary)' }}>
@@ -400,6 +469,24 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ ow
             </div>
           )}
 
+          {/* HTML preview */}
+          {!isImage && showPreview && isHtml && (
+            resolvedHtml ? (
+              <div style={{ background: 'var(--bg-secondary)' }}>
+                <iframe
+                  srcDoc={resolvedHtml}
+                  sandbox="allow-scripts"
+                  title={`Preview ${fileName}`}
+                  style={{ width: '100%', height: '65vh', border: 'none', background: 'white' }}
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-12" style={{ background: 'var(--bg-secondary)' }}>
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-tertiary)' }} />
+              </div>
+            )
+          )}
+
           {/* Edit mode */}
           {!isImage && editing && (
             <div style={{ background: 'var(--bg-secondary)' }}>
@@ -427,10 +514,16 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ ow
             </div>
           )}
 
-          {/* Code view (read-only) */}
+          {/* Code view (read-only) with line numbers */}
           {!isImage && !editing && !showPreview && fileContent !== null && (
-            <div className="overflow-auto max-h-[65vh]" style={{ background: 'var(--bg-secondary)' }}>
-              <pre className="p-4 text-[13px] leading-relaxed m-0"><code
+            <div className="overflow-auto max-h-[65vh] flex" style={{ background: 'var(--bg-secondary)' }}>
+              <div className="select-none text-right py-4 pl-3 pr-3 text-[13px] flex-shrink-0"
+                   style={{ color: 'var(--text-tertiary)', userSelect: 'none', lineHeight: '1.625', borderRight: '1px solid var(--border)', fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace' }}>
+                {fileContent.split('\n').map((_, i) => (
+                  <div key={i}>{i + 1}</div>
+                ))}
+              </div>
+              <pre className="py-4 pl-4 pr-4 text-[13px] m-0 flex-1 min-w-0" style={{ lineHeight: '1.625' }}><code
                 ref={codeRef}
                 className={lang ? `language-${lang}` : ''}
                 style={{ background: 'transparent' }}

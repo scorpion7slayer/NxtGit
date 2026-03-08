@@ -26,7 +26,7 @@ const Issues: React.FC = () => {
   const closedCount = issues.filter(i => i.state === 'closed').length;
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 w-full">
       <header className="mb-4">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Issues</h1>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Your issues across all repositories</p>

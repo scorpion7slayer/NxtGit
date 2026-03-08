@@ -87,7 +87,7 @@ const AppChangelog: React.FC = () => {
   }, [tab, ghLoaded]);
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 w-full">
       <header className="mb-6">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           Changelog

@@ -23,7 +23,7 @@ const Repositories: React.FC = () => {
   );
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 w-full">
       <header className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>

@@ -78,7 +78,7 @@ const WorkflowRunDetail: React.FC = () => {
   const color = statusColor(run.conclusion, run.status);
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 w-full">
       <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm mb-4 hover:underline" style={{ color: 'var(--text-secondary)' }}>
         <ArrowLeft className="w-3.5 h-3.5" /> Back
       </button>

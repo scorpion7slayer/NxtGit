@@ -79,7 +79,7 @@ const Dashboard: React.FC = () => {
     const recentEvents = events.slice(0, 12);
 
     return (
-        <div className="p-6 max-w-5xl">
+        <div className="p-6 w-full">
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <Loader2

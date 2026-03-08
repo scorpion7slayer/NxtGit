@@ -27,7 +27,7 @@ const PullRequests: React.FC = () => {
   const closedCount = prs.filter(p => p.state === 'closed').length;
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6 w-full">
       <header className="mb-4">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Pull Requests</h1>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Your pull requests across all repositories</p>
