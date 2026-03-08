@@ -1,4 +1,7 @@
 node_modules
+*.p12
+*.cer
+*.key
 .grepai/
 .claude/
 .env

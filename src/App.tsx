@@ -18,6 +18,7 @@ import GlobalSearch from "./components/GlobalSearch";
 import AppChangelog from "./components/AppChangelog";
 import CommitDetail from "./components/CommitDetail";
 import WorkflowRunDetail from "./components/WorkflowRunDetail";
+import Notifications from "./components/Notifications";
 import { useAuthStore } from "./stores/authStore";
 
 function App() {
@@ -51,6 +52,7 @@ function App() {
                 <Route path="/run/:owner/:name/:runId" element={<WorkflowRunDetail />} />
                 <Route path="/profile/:username" element={<UserProfile />} />
                 <Route path="/search" element={<GlobalSearch />} />
+                <Route path="/notifications" element={<Notifications />} />
                 <Route path="/app-changelog" element={<AppChangelog />} />
                 <Route path="/settings" element={<Settings />} />
             </Routes>

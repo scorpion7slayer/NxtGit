@@ -52,10 +52,35 @@ export interface GitHubRepo {
     stargazers_count: number;
     forks_count: number;
     open_issues_count: number;
+    watchers_count: number;
     updated_at: string;
+    created_at: string;
     default_branch: string;
     owner: { login: string; avatar_url: string };
     parent?: { full_name: string; owner: { login: string } };
+    topics?: string[];
+    license?: { spdx_id: string; name: string } | null;
+    homepage?: string | null;
+    has_issues: boolean;
+    has_wiki: boolean;
+    has_projects: boolean;
+    is_template: boolean;
+    allow_squash_merge: boolean;
+    allow_merge_commit: boolean;
+    allow_rebase_merge: boolean;
+    allow_auto_merge: boolean;
+    delete_branch_on_merge: boolean;
+    allow_forking: boolean;
+    web_commit_signoff_required: boolean;
+    archived: boolean;
+    disabled: boolean;
+    size: number;
+    html_url: string;
+    security_and_analysis?: {
+        advanced_security?: { status: string };
+        secret_scanning?: { status: string };
+        secret_scanning_push_protection?: { status: string };
+    };
 }
 
 export interface GitHubPR {
@@ -79,11 +104,11 @@ export interface GitHubEvent {
     created_at: string;
     payload: {
         action?: string;
-        pull_request?: { title: string };
+        pull_request?: { title: string; number: number };
         commits?: { message: string }[];
         ref?: string;
         ref_type?: string;
-        issue?: { title: string };
+        issue?: { title: string; number: number };
         release?: { tag_name: string };
     };
 }
@@ -909,6 +934,620 @@ export async function fetchWorkflowRunJobs(
         `/repos/${owner}/${name}/actions/runs/${runId}/jobs`,
     );
     return data.jobs || [];
+}
+
+// --- Star / Watch / Fork ---
+
+export async function isRepoStarred(owner: string, name: string): Promise<boolean> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/user/starred/${owner}/${name}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+    return response.status === 204;
+}
+
+export async function starRepo(owner: string, name: string): Promise<void> {
+    const token = useAuthStore.getState().token;
+    await fetch(`${API}/user/starred/${owner}/${name}`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+            "Content-Length": "0",
+        },
+    });
+}
+
+export async function unstarRepo(owner: string, name: string): Promise<void> {
+    const token = useAuthStore.getState().token;
+    await fetch(`${API}/user/starred/${owner}/${name}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+}
+
+export async function isRepoWatched(owner: string, name: string): Promise<boolean> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/subscription`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+    return response.ok;
+}
+
+export async function watchRepo(owner: string, name: string): Promise<void> {
+    await ghPut(`/repos/${owner}/${name}/subscription`, { subscribed: true });
+}
+
+export async function unwatchRepo(owner: string, name: string): Promise<void> {
+    const token = useAuthStore.getState().token;
+    await fetch(`${API}/repos/${owner}/${name}/subscription`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+}
+
+export async function forkRepo(owner: string, name: string): Promise<GitHubRepo> {
+    return ghPost<GitHubRepo>(`/repos/${owner}/${name}/forks`, {});
+}
+
+export async function fetchRepoLanguages(owner: string, name: string): Promise<Record<string, number>> {
+    return ghFetch<Record<string, number>>(`/repos/${owner}/${name}/languages`);
+}
+
+export async function fetchTrendingRepos(): Promise<GitHubRepo[]> {
+    const date = new Date();
+    date.setDate(date.getDate() - 7);
+    const since = date.toISOString().split("T")[0];
+    const data = await ghFetch<{ items: GitHubRepo[] }>(
+        `/search/repositories?q=created:>${since}+stars:>10&sort=stars&order=desc&per_page=20`,
+    );
+    return data.items || [];
+}
+
+// --- Releases ---
+
+export async function createRelease(
+    owner: string,
+    name: string,
+    tagName: string,
+    releaseName: string,
+    body: string,
+    draft: boolean = false,
+    prerelease: boolean = false,
+): Promise<GitHubRelease> {
+    return ghPost<GitHubRelease>(`/repos/${owner}/${name}/releases`, {
+        tag_name: tagName,
+        name: releaseName,
+        body,
+        draft,
+        prerelease,
+    });
+}
+
+// --- Security ---
+
+export interface GitHubDependabotAlert {
+    number: number;
+    state: string;
+    security_advisory: {
+        summary: string;
+        severity: string;
+        description: string;
+        cve_id: string | null;
+    };
+    security_vulnerability: {
+        package: { name: string; ecosystem: string };
+        severity: string;
+        vulnerable_version_range: string;
+    };
+    created_at: string;
+    html_url: string;
+}
+
+export interface GitHubCodeScanAlert {
+    number: number;
+    state: string;
+    rule: { id: string; severity: string; description: string };
+    tool: { name: string };
+    most_recent_instance: {
+        ref: string;
+        location: { path: string; start_line: number };
+    };
+    created_at: string;
+    html_url: string;
+}
+
+export async function fetchDependabotAlerts(
+    owner: string,
+    name: string,
+): Promise<GitHubDependabotAlert[]> {
+    return ghFetch<GitHubDependabotAlert[]>(
+        `/repos/${owner}/${name}/dependabot/alerts?state=open&per_page=30`,
+    );
+}
+
+export async function fetchCodeScanningAlerts(
+    owner: string,
+    name: string,
+): Promise<GitHubCodeScanAlert[]> {
+    return ghFetch<GitHubCodeScanAlert[]>(
+        `/repos/${owner}/${name}/code-scanning/alerts?state=open&per_page=30`,
+    );
+}
+
+// --- Secret Scanning ---
+
+export interface GitHubSecretAlert {
+    number: number;
+    state: string;
+    secret_type: string;
+    secret_type_display_name: string;
+    secret: string;
+    resolution: string | null;
+    created_at: string;
+    updated_at: string;
+    html_url: string;
+    push_protection_bypassed: boolean | null;
+}
+
+export async function fetchSecretScanningAlerts(
+    owner: string,
+    name: string,
+): Promise<GitHubSecretAlert[]> {
+    return ghFetch<GitHubSecretAlert[]>(
+        `/repos/${owner}/${name}/secret-scanning/alerts?state=open&per_page=30`,
+    );
+}
+
+export async function dismissDependabotAlert(
+    owner: string,
+    name: string,
+    alertNumber: number,
+    state: "dismissed" | "open",
+    dismissedReason?: string,
+): Promise<GitHubDependabotAlert> {
+    return ghPatch<GitHubDependabotAlert>(
+        `/repos/${owner}/${name}/dependabot/alerts/${alertNumber}`,
+        { state, ...(dismissedReason ? { dismissed_reason: dismissedReason } : {}) },
+    );
+}
+
+export async function dismissCodeScanningAlert(
+    owner: string,
+    name: string,
+    alertNumber: number,
+    state: "dismissed" | "open",
+    dismissedReason?: string,
+): Promise<GitHubCodeScanAlert> {
+    return ghPatch<GitHubCodeScanAlert>(
+        `/repos/${owner}/${name}/code-scanning/alerts/${alertNumber}`,
+        { state, ...(dismissedReason ? { dismissed_reason: dismissedReason } : {}) },
+    );
+}
+
+export async function dismissSecretScanningAlert(
+    owner: string,
+    name: string,
+    alertNumber: number,
+    state: "resolved" | "open",
+    resolution?: string,
+): Promise<GitHubSecretAlert> {
+    return ghPatch<GitHubSecretAlert>(
+        `/repos/${owner}/${name}/secret-scanning/alerts/${alertNumber}`,
+        { state, ...(resolution ? { resolution } : {}) },
+    );
+}
+
+// --- Collaborators ---
+
+export interface GitHubCollaborator {
+    id: number;
+    login: string;
+    avatar_url: string;
+    html_url: string;
+    permissions: { admin: boolean; maintain: boolean; push: boolean; triage: boolean; pull: boolean };
+    role_name: string;
+}
+
+export async function fetchCollaborators(
+    owner: string,
+    name: string,
+): Promise<GitHubCollaborator[]> {
+    return ghFetch<GitHubCollaborator[]>(
+        `/repos/${owner}/${name}/collaborators?per_page=50`,
+    );
+}
+
+export async function addCollaborator(
+    owner: string,
+    name: string,
+    username: string,
+    permission: string = "push",
+): Promise<void> {
+    await ghPut(`/repos/${owner}/${name}/collaborators/${username}`, { permission });
+}
+
+export async function removeCollaborator(
+    owner: string,
+    name: string,
+    username: string,
+): Promise<void> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/collaborators/${username}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+}
+
+// --- Deploy Keys ---
+
+export interface GitHubDeployKey {
+    id: number;
+    key: string;
+    title: string;
+    url: string;
+    created_at: string;
+    read_only: boolean;
+    verified: boolean;
+}
+
+export async function fetchDeployKeys(
+    owner: string,
+    name: string,
+): Promise<GitHubDeployKey[]> {
+    return ghFetch<GitHubDeployKey[]>(`/repos/${owner}/${name}/keys?per_page=30`);
+}
+
+export async function addDeployKey(
+    owner: string,
+    name: string,
+    title: string,
+    key: string,
+    readOnly: boolean = true,
+): Promise<GitHubDeployKey> {
+    return ghPost<GitHubDeployKey>(`/repos/${owner}/${name}/keys`, {
+        title,
+        key,
+        read_only: readOnly,
+    });
+}
+
+export async function removeDeployKey(
+    owner: string,
+    name: string,
+    keyId: number,
+): Promise<void> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/keys/${keyId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+}
+
+// --- Webhooks ---
+
+export interface GitHubWebhook {
+    id: number;
+    name: string;
+    active: boolean;
+    events: string[];
+    config: { url: string; content_type: string; insecure_ssl: string };
+    created_at: string;
+    updated_at: string;
+}
+
+export async function fetchWebhooks(
+    owner: string,
+    name: string,
+): Promise<GitHubWebhook[]> {
+    return ghFetch<GitHubWebhook[]>(`/repos/${owner}/${name}/hooks?per_page=30`);
+}
+
+export async function createWebhook(
+    owner: string,
+    name: string,
+    url: string,
+    events: string[] = ["push"],
+    contentType: string = "json",
+): Promise<GitHubWebhook> {
+    return ghPost<GitHubWebhook>(`/repos/${owner}/${name}/hooks`, {
+        name: "web",
+        active: true,
+        events,
+        config: { url, content_type: contentType, insecure_ssl: "0" },
+    });
+}
+
+export async function deleteWebhook(
+    owner: string,
+    name: string,
+    hookId: number,
+): Promise<void> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/hooks/${hookId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+}
+
+// --- Branch Protection ---
+
+export interface GitHubBranchProtection {
+    required_status_checks: { strict: boolean; contexts: string[] } | null;
+    enforce_admins: { enabled: boolean } | null;
+    required_pull_request_reviews: {
+        dismiss_stale_reviews: boolean;
+        require_code_owner_reviews: boolean;
+        required_approving_review_count: number;
+    } | null;
+    restrictions: { users: { login: string }[]; teams: { slug: string }[] } | null;
+}
+
+export async function fetchBranchProtection(
+    owner: string,
+    name: string,
+    branch: string,
+): Promise<GitHubBranchProtection | null> {
+    try {
+        return await ghFetch<GitHubBranchProtection>(
+            `/repos/${owner}/${name}/branches/${branch}/protection`,
+        );
+    } catch {
+        return null;
+    }
+}
+
+// --- Repo Settings ---
+
+export async function updateRepo(
+    owner: string,
+    name: string,
+    data: Record<string, unknown>,
+): Promise<GitHubRepo> {
+    return ghPatch<GitHubRepo>(`/repos/${owner}/${name}`, data);
+}
+
+export async function deleteRepo(
+    owner: string,
+    name: string,
+): Promise<void> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+}
+
+// --- Notifications ---
+
+export interface GitHubNotification {
+    id: string;
+    unread: boolean;
+    reason: string;
+    updated_at: string;
+    last_read_at: string | null;
+    subject: {
+        title: string;
+        url: string | null;
+        latest_comment_url: string | null;
+        type: string;
+    };
+    repository: {
+        id: number;
+        full_name: string;
+        owner: { login: string; avatar_url: string };
+        name: string;
+    };
+    url: string;
+}
+
+export async function fetchNotifications(
+    all: boolean = false,
+    participating: boolean = false,
+): Promise<GitHubNotification[]> {
+    return ghFetch<GitHubNotification[]>(
+        `/notifications?all=${all}&participating=${participating}&per_page=50`,
+    );
+}
+
+export async function markNotificationRead(threadId: string): Promise<void> {
+    const token = useAuthStore.getState().token;
+    await fetch(`${API}/notifications/threads/${threadId}`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+}
+
+export async function markNotificationDone(threadId: string): Promise<void> {
+    const token = useAuthStore.getState().token;
+    await fetch(`${API}/notifications/threads/${threadId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+        },
+    });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+    const token = useAuthStore.getState().token;
+    await fetch(`${API}/notifications`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+    });
+}
+
+// --- Copilot Agents ---
+
+export async function fetchCopilotIssues(
+    owner: string,
+    name: string,
+): Promise<GitHubIssue[]> {
+    return ghFetch<GitHubIssue[]>(
+        `/repos/${owner}/${name}/issues?assignee=copilot&state=all&per_page=30`,
+    );
+}
+
+export async function assignCopilotToIssue(
+    owner: string,
+    name: string,
+    issueNumber: number,
+): Promise<GitHubIssue> {
+    return ghPost<GitHubIssue>(
+        `/repos/${owner}/${name}/issues/${issueNumber}/assignees`,
+        { assignees: ["copilot"] },
+    );
+}
+
+export async function createCopilotTask(
+    owner: string,
+    name: string,
+    title: string,
+    body: string,
+): Promise<GitHubIssue> {
+    return ghPost<GitHubIssue>(`/repos/${owner}/${name}/issues`, {
+        title,
+        body,
+        assignees: ["copilot"],
+    });
+}
+
+// --- Environments ---
+
+export interface GitHubEnvironment {
+    id: number;
+    name: string;
+    html_url: string;
+    created_at: string;
+    updated_at: string;
+    protection_rules: {
+        id: number;
+        type: string;
+        wait_timer?: number;
+        reviewers?: { type: string; reviewer: { login: string; avatar_url: string } }[];
+    }[];
+    deployment_branch_policy: {
+        protected_branches: boolean;
+        custom_branch_policies: boolean;
+    } | null;
+}
+
+export interface GitHubDeployment {
+    id: number;
+    sha: string;
+    ref: string;
+    task: string;
+    environment: string;
+    description: string | null;
+    creator: { login: string; avatar_url: string } | null;
+    created_at: string;
+    updated_at: string;
+    statuses_url: string;
+    payload: Record<string, unknown>;
+}
+
+export interface GitHubDeploymentStatus {
+    id: number;
+    state: string;
+    description: string | null;
+    environment: string;
+    created_at: string;
+    creator: { login: string; avatar_url: string } | null;
+    environment_url: string | null;
+    log_url: string | null;
+}
+
+export async function fetchEnvironments(
+    owner: string,
+    name: string,
+): Promise<GitHubEnvironment[]> {
+    const data = await ghFetch<{ total_count: number; environments: GitHubEnvironment[] }>(
+        `/repos/${owner}/${name}/environments`,
+    );
+    return data.environments;
+}
+
+export async function fetchDeployments(
+    owner: string,
+    name: string,
+    environment?: string,
+): Promise<GitHubDeployment[]> {
+    const envParam = environment ? `&environment=${encodeURIComponent(environment)}` : "";
+    return ghFetch<GitHubDeployment[]>(
+        `/repos/${owner}/${name}/deployments?per_page=20${envParam}`,
+    );
+}
+
+export async function fetchDeploymentStatuses(
+    owner: string,
+    name: string,
+    deploymentId: number,
+): Promise<GitHubDeploymentStatus[]> {
+    return ghFetch<GitHubDeploymentStatus[]>(
+        `/repos/${owner}/${name}/deployments/${deploymentId}/statuses?per_page=5`,
+    );
 }
 
 export async function fetchGitHubStatus(): Promise<{

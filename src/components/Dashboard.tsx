@@ -301,12 +301,12 @@ function eventLink(event: GitHubEvent): string {
         case "PullRequestEvent":
         case "PullRequestReviewEvent":
             return event.payload.pull_request
-                ? `/pr/${owner}/${repo}/${(event.payload as any).number || ''}`
+                ? `/pr/${owner}/${repo}/${event.payload.pull_request?.number || ''}`
                 : `/repos/${owner}/${repo}`;
         case "IssuesEvent":
         case "IssueCommentEvent":
             return event.payload.issue
-                ? `/issue/${owner}/${repo}/${(event.payload as any).issue?.number || ''}`
+                ? `/issue/${owner}/${repo}/${event.payload.issue?.number || ''}`
                 : `/repos/${owner}/${repo}`;
         default:
             return `/repos/${owner}/${repo}`;

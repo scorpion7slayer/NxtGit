@@ -167,7 +167,7 @@ const Login: React.FC = () => {
                     },
                     body: JSON.stringify({
                         client_id: CLIENT_ID,
-                        scope: "repo read:user read:org",
+                        scope: "repo delete_repo read:user read:org",
                     }),
                 },
             );

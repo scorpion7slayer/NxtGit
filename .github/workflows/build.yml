@@ -72,10 +72,38 @@ jobs:
         if: inputs.target == 'armv7-unknown-linux-gnueabihf'
         run: rustup target add armv7-unknown-linux-gnueabihf
 
+      # if you use an App Store Connect API key, write it to disk first
+      - name: Prepare Apple API key (optional)
+        run: |
+          if [ -n "${{ secrets.APPLE_API_KEY_CONTENT }}" ]; then
+            mkdir -p ~/.appstoreconnect/private_keys
+            echo "${{ secrets.APPLE_API_KEY_CONTENT }}" \
+              > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+          fi
+
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # frontend env vars
+          VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
+
+          # code‑signing certificate (base64‑encoded .p12)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+
+          # notarization credentials (choose one method)
+          # set the classic Apple ID/password/team trio:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # or, if using an API key, the action will look in the default
+          # ~/.appstoreconnect/private_keys directory we created above.
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
         with:
           releaseId: ${{ inputs.release-id }}
           args: ${{ inputs.build-args }}

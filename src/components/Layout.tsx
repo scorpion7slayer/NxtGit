@@ -12,6 +12,7 @@ import {
     LogOut,
     Search,
     Sparkles,
+    Bell,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import logo from "../assets/logo.svg";
@@ -88,6 +89,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         label="GitHub Status"
                     />
                     <NavItem to="/search" icon={Search} label="Search" />
+                    <NavItem
+                        to="/notifications"
+                        icon={Bell}
+                        label="Notifications"
+                    />
                 </nav>
 
                 {/* User section */}
@@ -136,7 +142,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             <main className="flex-1 overflow-hidden">
                 <div
-                    className="h-full overflow-auto layout-main"
+                    className="h-full overflow-y-auto overflow-x-hidden layout-main"
                     style={{ background: "var(--bg-primary)" }}
                 >
                     {children}
