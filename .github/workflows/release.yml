@@ -1,0 +1,103 @@
+name: Build & Release Tauri App
+
+on:
+    push:
+        tags:
+            - "v*.*.*"
+    workflow_dispatch:
+
+jobs:
+    build-macos:
+        runs-on: macos-latest
+        strategy:
+            matrix:
+                arch: [x64, arm64]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+            - name: Setup Rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: stable
+                  target: ${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+                  profile: minimal
+            - run: npm install
+            - name: Build Tauri (macOS)
+              run: |
+                  npx tauri build --target ${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: NxtGit-macos-${{ matrix.arch }}
+                  path: src-tauri/target/${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}/release/*
+
+    build-windows:
+        runs-on: windows-latest
+        strategy:
+            matrix:
+                arch: [x64, x86, arm64]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+            - name: Setup Rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: stable
+                  target: ${{ matrix.arch == 'x64' && 'x86_64-pc-windows-msvc' || matrix.arch == 'x86' && 'i686-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}
+                  profile: minimal
+            - run: npm install
+            - name: Build Tauri (Windows)
+              run: |
+                  npx tauri build --target ${{ matrix.arch == 'x64' && 'x86_64-pc-windows-msvc' || matrix.arch == 'x86' && 'i686-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: NxtGit-windows-${{ matrix.arch }}
+                  path: src-tauri/target/${{ matrix.arch == 'x64' && 'x86_64-pc-windows-msvc' || matrix.arch == 'x86' && 'i686-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}/release/*
+
+    build-linux:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                arch: [x64, x86, arm64]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+            - name: Setup Rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: stable
+                  target: ${{ matrix.arch == 'x64' && 'x86_64-unknown-linux-gnu' || matrix.arch == 'x86' && 'i686-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}
+                  profile: minimal
+            - run: sudo apt-get update && sudo apt-get install -y build-essential libwebkit2gtk-4.0-dev libssl-dev
+            - run: npm install
+            - name: Build Tauri (Linux)
+              run: |
+                  npx tauri build --target ${{ matrix.arch == 'x64' && 'x86_64-unknown-linux-gnu' || matrix.arch == 'x86' && 'i686-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: NxtGit-linux-${{ matrix.arch }}
+                  path: src-tauri/target/${{ matrix.arch == 'x64' && 'x86_64-unknown-linux-gnu' || matrix.arch == 'x86' && 'i686-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}/release/*
+
+    release:
+        needs: [build-macos, build-windows, build-linux]
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/download-artifact@v4
+              with:
+                  path: ./artifacts
+            - name: Create Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: ./artifacts/**/**
+                  draft: false
+                  prerelease: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
