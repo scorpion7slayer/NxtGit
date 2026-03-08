@@ -16,9 +16,9 @@ npm run tauri-build      # Production build (outputs .dmg for macOS)
 npm run build            # Frontend-only build: tsc + vite build
 ```
 
-Rust backend requires `cargo` and the Rust toolchain (edition 2021, rust-version 1.70+). Tauri CLI is installed via npm (`@tauri-apps/cli` v2).
+Rust backend requires `cargo` and the Rust toolchain (edition 2021, rust-version 1.77.2+). Tauri CLI is installed via npm (`@tauri-apps/cli` v2).
 
-No test runner or linter is currently configured.
+No local test runner or linter is configured. CI/CD via GitHub Actions (`.github/workflows/`): `test.yml` runs `cargo test`, `lint.yml` runs `tsc` type checking, `build.yml` and `release.yml` handle builds and releases.
 
 ## Architecture
 
@@ -32,8 +32,12 @@ No test runner or linter is currently configured.
 
 ### Backend (`src-tauri/`)
 - **Tauri v2** with minimal Rust code — `main.rs` only registers plugins (shell, http, store). No custom Tauri commands yet.
-- Plugins: `tauri-plugin-shell`, `tauri-plugin-http`, `tauri-plugin-store`
+- Plugins: `tauri-plugin-shell`, `tauri-plugin-http`, `tauri-plugin-store`, `tauri-plugin-window-state`, `tauri-plugin-clipboard-manager`
 - Config in `tauri.conf.json`: dev server at `localhost:1420`, transparent window with overlay title bar, CSP restricted to GitHub API and OpenRouter API domains
+
+### Business Logic (`src/lib/`)
+- **`ai.ts`** — Multi-provider AI integration with streaming support. Providers: GitHub Copilot (OAuth device flow), OpenRouter, Anthropic, OpenAI, Ollama (local), Moonshot, Kilocode, Minimax. Handles token management, model selection, and streaming responses.
+- **`github.ts`** — GitHub API wrapper using `@octokit/rest`. Repos, PRs, issues, commits, workflow runs, user profiles, org data.
 
 ### Design System
 - "Liquid Glass" on macOS: native `sidebar` vibrancy effect via Tauri `windowEffects`, transparent window, overlay title bar, `backdrop-filter: blur()` on cards/panels
@@ -47,8 +51,13 @@ No test runner or linter is currently configured.
 - When adding UI, use CSS variables (`var(--text-primary)`, `var(--bg-tertiary)`, etc.) instead of hardcoded colors
 
 ### External APIs
-- **GitHub**: OAuth flow initiated client-side (`Login.tsx`), uses `@octokit/rest` and `octokit` for API calls. Scopes: `repo read:user read:org`
-- **OpenRouter**: AI features (code review, PR description generation) use the OpenRouter API. Key stored locally via Tauri store.
+- **GitHub**: OAuth device flow implemented in `Login.tsx` with token polling, uses `@octokit/rest` for API calls. Scopes: `repo read:user read:org`
+- **AI Providers**: Multiple providers supported via `src/lib/ai.ts`:
+  - **GitHub Copilot** — OAuth device flow, token caching with expiry, models: gpt-4.1, o3-mini, claude-sonnet-4, etc.
+  - **OpenRouter** — API key auth, wide model selection
+  - **Anthropic / OpenAI** — Direct API key auth
+  - **Ollama** — Local LLM support with custom base URL
+  - Keys stored locally via Tauri store
 
 ### Environment Variables
 - `VITE_GITHUB_CLIENT_ID` — GitHub OAuth client ID
@@ -56,4 +65,4 @@ No test runner or linter is currently configured.
 
 ## Current State
 
-The app has UI scaffolding with mostly static/placeholder data. Dashboard stats, repository list, PR list, and AI review results are all hardcoded. The GitHub OAuth flow opens a browser window but the callback handler is not implemented. AI review triggers a timeout mock, not actual API calls. Core functionality (fetching real data from GitHub, calling OpenRouter, handling OAuth callbacks) still needs to be built.
+Version 1.0.0 released. Core features implemented: GitHub OAuth device flow with token polling, real GitHub API integration (repos, PRs, issues, commits, workflow runs, user profiles), multi-provider AI with streaming (Copilot, OpenRouter, Anthropic, OpenAI, Ollama), AI-powered chat and code review, GitHub status monitoring, global search, and app changelog from GitHub releases. 20 components in `src/components/`.
