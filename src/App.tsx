@@ -13,6 +13,11 @@ import Chat from "./components/Chat";
 import Settings from "./components/Settings";
 import GitHubStatus from "./components/GitHubStatus";
 import Login from "./components/Login";
+import UserProfile from "./components/UserProfile";
+import GlobalSearch from "./components/GlobalSearch";
+import AppChangelog from "./components/AppChangelog";
+import CommitDetail from "./components/CommitDetail";
+import WorkflowRunDetail from "./components/WorkflowRunDetail";
 import { useAuthStore } from "./stores/authStore";
 
 function App() {
@@ -42,6 +47,11 @@ function App() {
                 <Route path="/ai-review" element={<AIReview />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/status" element={<GitHubStatus />} />
+                <Route path="/commit/:owner/:name/:sha" element={<CommitDetail />} />
+                <Route path="/run/:owner/:name/:runId" element={<WorkflowRunDetail />} />
+                <Route path="/profile/:username" element={<UserProfile />} />
+                <Route path="/search" element={<GlobalSearch />} />
+                <Route path="/app-changelog" element={<AppChangelog />} />
                 <Route path="/settings" element={<Settings />} />
             </Routes>
         </Layout>

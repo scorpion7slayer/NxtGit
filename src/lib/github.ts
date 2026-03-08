@@ -47,6 +47,7 @@ export interface GitHubRepo {
     full_name: string;
     description: string | null;
     private: boolean;
+    fork: boolean;
     language: string | null;
     stargazers_count: number;
     forks_count: number;
@@ -54,6 +55,7 @@ export interface GitHubRepo {
     updated_at: string;
     default_branch: string;
     owner: { login: string; avatar_url: string };
+    parent?: { full_name: string; owner: { login: string } };
 }
 
 export interface GitHubPR {
@@ -266,16 +268,22 @@ export async function fetchRepoContents(
     owner: string,
     name: string,
     path: string = "",
+    ref?: string,
 ): Promise<GitHubContent[]> {
-    return ghFetch<GitHubContent[]>(`/repos/${owner}/${name}/contents/${path}`);
+    const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+    return ghFetch<GitHubContent[]>(
+        `/repos/${owner}/${name}/contents/${path}${q}`,
+    );
 }
 
 export async function fetchFileContent(
     owner: string,
     name: string,
     path: string,
+    ref?: string,
 ): Promise<string> {
-    return ghFetchRaw(`/repos/${owner}/${name}/contents/${path}`);
+    const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+    return ghFetchRaw(`/repos/${owner}/${name}/contents/${path}${q}`);
 }
 
 export interface TreeEntry {
@@ -497,8 +505,8 @@ export async function addLabels(
 export async function fetchRepoBranches(
     owner: string,
     name: string,
-): Promise<{ name: string; protected: boolean }[]> {
-    return ghFetch<{ name: string; protected: boolean }[]>(
+): Promise<GitHubBranch[]> {
+    return ghFetch<GitHubBranch[]>(
         `/repos/${owner}/${name}/branches?per_page=100`,
     );
 }
@@ -589,4 +597,258 @@ const EXT_TO_LANG: Record<string, string> = {
 export function detectLanguage(filename: string): string | undefined {
     const ext = filename.split(".").pop()?.toLowerCase() || "";
     return EXT_TO_LANG[ext];
+}
+
+// --- New Types ---
+
+export interface GitHubWorkflowRun {
+    id: number;
+    name: string;
+    head_branch: string;
+    status: string;
+    conclusion: string | null;
+    run_number: number;
+    event: string;
+    created_at: string;
+    updated_at: string;
+    html_url: string;
+    actor: { login: string; avatar_url: string } | null;
+}
+
+export interface GitHubUserProfile {
+    id: number;
+    login: string;
+    avatar_url: string;
+    name: string | null;
+    bio: string | null;
+    company: string | null;
+    location: string | null;
+    blog: string | null;
+    twitter_username: string | null;
+    public_repos: number;
+    public_gists: number;
+    followers: number;
+    following: number;
+    created_at: string;
+    html_url: string;
+    type: string;
+}
+
+export interface GitHubChangelogEntry {
+    title: string;
+    link: string;
+    pubDate: string;
+    description: string;
+    contentHtml: string;
+}
+
+// --- New Fetchers ---
+
+export async function fetchWorkflowRuns(
+    owner: string,
+    name: string,
+): Promise<GitHubWorkflowRun[]> {
+    const data = await ghFetch<{ workflow_runs: GitHubWorkflowRun[] }>(
+        `/repos/${owner}/${name}/actions/runs?per_page=20`,
+    );
+    return data.workflow_runs || [];
+}
+
+export async function searchRepos(query: string): Promise<GitHubRepo[]> {
+    const data = await ghFetch<{ items: GitHubRepo[] }>(
+        `/search/repositories?q=${encodeURIComponent(query)}&per_page=20&sort=stars`,
+    );
+    return data.items || [];
+}
+
+export async function searchUsers(
+    query: string,
+): Promise<GitHubUserProfile[]> {
+    const data = await ghFetch<{ items: GitHubUserProfile[] }>(
+        `/search/users?q=${encodeURIComponent(query)}&per_page=20`,
+    );
+    return data.items || [];
+}
+
+export async function fetchUserProfile(
+    username: string,
+): Promise<GitHubUserProfile> {
+    return ghFetch<GitHubUserProfile>(`/users/${username}`);
+}
+
+export async function fetchUserRepos(
+    username: string,
+): Promise<GitHubRepo[]> {
+    return ghFetch<GitHubRepo[]>(
+        `/users/${username}/repos?sort=updated&per_page=30`,
+    );
+}
+
+export async function fetchGitHubChangelog(): Promise<GitHubChangelogEntry[]> {
+    const response = await fetch("https://github.blog/changelog/feed/", {
+        method: "GET",
+        headers: { "User-Agent": "NxtGit/0.1.0", Accept: "application/rss+xml" },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const xml = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, "text/xml");
+    const items = doc.getElementsByTagName("item");
+    const entries: GitHubChangelogEntry[] = [];
+    for (let i = 0; i < items.length && i < 10; i++) {
+        const item = items[i];
+        const getText = (tag: string) =>
+            item.getElementsByTagName(tag)[0]?.textContent?.trim() || "";
+        const contentEncoded = item.getElementsByTagNameNS("http://purl.org/rss/1.0/modules/content/", "encoded")[0]?.textContent?.trim() || "";
+        const descHtml = item.getElementsByTagName("description")[0]?.textContent?.trim() || "";
+        entries.push({
+            title: getText("title"),
+            link: getText("link"),
+            pubDate: getText("pubDate"),
+            description: descHtml,
+            contentHtml: contentEncoded || descHtml,
+        });
+    }
+    return entries;
+}
+
+export interface GitHubRelease {
+    id: number;
+    tag_name: string;
+    name: string | null;
+    body: string | null;
+    draft: boolean;
+    prerelease: boolean;
+    created_at: string;
+    published_at: string | null;
+    author: { login: string; avatar_url: string };
+    html_url: string;
+    assets: {
+        name: string;
+        size: number;
+        download_count: number;
+        browser_download_url: string;
+    }[];
+}
+
+export interface GitHubContributor {
+    login: string;
+    avatar_url: string;
+    contributions: number;
+    html_url: string;
+}
+
+export interface GitHubCommitDetail {
+    sha: string;
+    commit: {
+        message: string;
+        author: { name: string; date: string; email: string };
+    };
+    author: { login: string; avatar_url: string } | null;
+    stats: { total: number; additions: number; deletions: number };
+    files: {
+        filename: string;
+        status: string;
+        additions: number;
+        deletions: number;
+        changes: number;
+        patch?: string;
+    }[];
+}
+
+export interface GitHubWorkflowRunDetail {
+    id: number;
+    name: string;
+    head_branch: string;
+    head_sha: string;
+    status: string;
+    conclusion: string | null;
+    run_number: number;
+    event: string;
+    created_at: string;
+    updated_at: string;
+    html_url: string;
+    actor: { login: string; avatar_url: string } | null;
+    run_attempt: number;
+}
+
+export interface GitHubWorkflowJob {
+    id: number;
+    name: string;
+    status: string;
+    conclusion: string | null;
+    started_at: string;
+    completed_at: string | null;
+    steps: {
+        name: string;
+        status: string;
+        conclusion: string | null;
+        number: number;
+    }[];
+}
+
+export interface GitHubBranch {
+    name: string;
+    protected: boolean;
+    commit: { sha: string };
+}
+
+export async function fetchRepoReleases(
+    owner: string,
+    name: string,
+): Promise<GitHubRelease[]> {
+    return ghFetch<GitHubRelease[]>(
+        `/repos/${owner}/${name}/releases?per_page=20`,
+    );
+}
+
+export async function fetchRepoContributors(
+    owner: string,
+    name: string,
+): Promise<GitHubContributor[]> {
+    return ghFetch<GitHubContributor[]>(
+        `/repos/${owner}/${name}/contributors?per_page=30`,
+    );
+}
+
+export async function fetchCommitDetail(
+    owner: string,
+    name: string,
+    sha: string,
+): Promise<GitHubCommitDetail> {
+    return ghFetch<GitHubCommitDetail>(`/repos/${owner}/${name}/commits/${sha}`);
+}
+
+export async function fetchWorkflowRunDetail(
+    owner: string,
+    name: string,
+    runId: number,
+): Promise<GitHubWorkflowRunDetail> {
+    return ghFetch<GitHubWorkflowRunDetail>(
+        `/repos/${owner}/${name}/actions/runs/${runId}`,
+    );
+}
+
+export async function fetchWorkflowRunJobs(
+    owner: string,
+    name: string,
+    runId: number,
+): Promise<GitHubWorkflowJob[]> {
+    const data = await ghFetch<{ jobs: GitHubWorkflowJob[] }>(
+        `/repos/${owner}/${name}/actions/runs/${runId}/jobs`,
+    );
+    return data.jobs || [];
+}
+
+export async function fetchGitHubStatus(): Promise<{
+    indicator: string;
+    description: string;
+}> {
+    const response = await fetch(
+        "https://www.githubstatus.com/api/v2/status.json",
+        { method: "GET", headers: { Accept: "application/json" } },
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    return data.status;
 }

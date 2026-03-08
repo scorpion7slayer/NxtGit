@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Star, GitBranch, Lock, Loader2 } from 'lucide-react';
+import { Search, Star, GitBranch, GitFork, Lock, Loader2 } from 'lucide-react';
 import { fetchRepos, langColor, timeAgo, type GitHubRepo } from '../lib/github';
 
 const Repositories: React.FC = () => {
@@ -70,7 +70,18 @@ const Repositories: React.FC = () => {
                     <Lock className="w-2.5 h-2.5" /> Private
                   </span>
                 )}
+                {repo.fork && (
+                  <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border"
+                        style={{ borderColor: 'var(--border)', color: 'var(--text-tertiary)' }}>
+                    <GitFork className="w-2.5 h-2.5" /> Fork
+                  </span>
+                )}
               </div>
+              {repo.fork && repo.parent && (
+                <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                  forked from <span style={{ color: 'var(--accent)' }}>{repo.parent.full_name}</span>
+                </p>
+              )}
               {repo.description && (
                 <p className="text-sm mb-2 line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
                   {repo.description}

@@ -22,7 +22,13 @@
                 { "url": "https://api.minimax.chat/**" },
                 { "url": "http://localhost:*/**" },
                 { "url": "http://127.0.0.1:*/**" },
-                { "url": "https://ollama.com/**" }
+                { "url": "https://ollama.com/**" },
+                { "url": "https://www.githubstatus.com/**" },
+                { "url": "https://us.githubstatus.com/**" },
+                { "url": "https://eu.githubstatus.com/**" },
+                { "url": "https://au.githubstatus.com/**" },
+                { "url": "https://jp.githubstatus.com/**" },
+                { "url": "https://github.blog/**" }
             ]
         }
     ]

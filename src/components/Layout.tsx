@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard,
     GitBranch,
@@ -10,6 +10,8 @@ import {
     Activity,
     Settings,
     LogOut,
+    Search,
+    Sparkles,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import logo from "../assets/logo.svg";
@@ -20,6 +22,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { user, logout } = useAuthStore();
+    const navigate = useNavigate();
 
     return (
         <div
@@ -84,6 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         icon={Activity}
                         label="GitHub Status"
                     />
+                    <NavItem to="/search" icon={Search} label="Search" />
                 </nav>
 
                 {/* User section */}
@@ -91,7 +95,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     className="px-2 py-3 border-t"
                     style={{ borderColor: "var(--border)" }}
                 >
-                    <div className="flex items-center gap-2.5 px-2.5 mb-3">
+                    <div
+                        className="flex items-center gap-2.5 px-2.5 mb-3 cursor-pointer rounded-lg py-1.5 hover:bg-[var(--bg-tertiary)] transition-colors"
+                        onClick={() => navigate(`/profile/${user?.login || ''}`)}
+                    >
                         <img
                             src={
                                 user?.avatar_url ||
@@ -110,6 +117,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
                     </div>
 
+                    <NavItem
+                        to="/app-changelog"
+                        icon={Sparkles}
+                        label="Changelog"
+                    />
                     <NavItem to="/settings" icon={Settings} label="Settings" />
                     <button
                         onClick={logout}

@@ -87,7 +87,8 @@ const PRDetailPage: React.FC = () => {
                   style={{ background: `${statusColor}20`, color: statusColor }}>
               {status}
             </span>
-            <span>{pr.user.login} wants to merge <strong>{pr.head.ref}</strong> into <strong>{pr.base.ref}</strong></span>
+            <span className="cursor-pointer hover:underline" onClick={() => navigate(`/profile/${pr.user.login}`)}>{pr.user.login}</span>
+            <span> wants to merge <strong>{pr.head.ref}</strong> into <strong>{pr.base.ref}</strong></span>
           </div>
           <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
             <span className="flex items-center gap-1"><Plus className="w-3 h-3" style={{ color: 'var(--success)' }} /> {pr.additions}</span>
@@ -157,8 +158,8 @@ const PRDetailPage: React.FC = () => {
             <div key={c.id} className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border)' }}>
               <div className="px-4 py-2 text-xs flex items-center gap-2 border-b"
                    style={{ borderColor: 'var(--border)', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                <img src={c.user.avatar_url} alt="" className="w-4 h-4 rounded-full" />
-                <span className="font-medium">{c.user.login}</span>
+                <img src={c.user.avatar_url} alt="" className="w-4 h-4 rounded-full cursor-pointer" onClick={() => navigate(`/profile/${c.user.login}`)} />
+                <span className="font-medium cursor-pointer hover:underline" onClick={() => navigate(`/profile/${c.user.login}`)}>{c.user.login}</span>
                 <span>{timeAgo(c.created_at)}</span>
               </div>
               <div className="px-4 py-3 text-sm leading-relaxed"
@@ -197,7 +198,11 @@ const PRDetailPage: React.FC = () => {
             <div key={file.filename} className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border)' }}>
               <div className="px-4 py-2 text-xs flex items-center justify-between border-b"
                    style={{ borderColor: 'var(--border)', background: 'var(--bg-tertiary)' }}>
-                <span className="font-mono font-medium" style={{ color: 'var(--text-primary)' }}>{file.filename}</span>
+                <span className="font-mono font-medium cursor-pointer hover:underline"
+                      style={{ color: 'var(--accent)' }}
+                      onClick={() => navigate(`/repos/${owner}/${name}`)}>
+                  {file.filename}
+                </span>
                 <div className="flex items-center gap-3" style={{ color: 'var(--text-tertiary)' }}>
                   <span style={{ color: 'var(--success)' }}>+{file.additions}</span>
                   <span style={{ color: 'var(--error)' }}>-{file.deletions}</span>

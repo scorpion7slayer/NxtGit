@@ -345,9 +345,10 @@ const GitHubStatus: React.FC = () => {
                                             className="w-2 h-2 rounded-full"
                                             style={{ background: incidentImpactColor(inc.impact) }}
                                         />
-                                        <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                                        <a href={inc.shortlink} target="_blank" rel="noopener noreferrer"
+                                           className="text-sm font-medium hover:underline" style={{ color: "var(--accent)" }}>
                                             {inc.name}
-                                        </span>
+                                        </a>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span

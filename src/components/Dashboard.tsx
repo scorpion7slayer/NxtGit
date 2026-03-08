@@ -13,6 +13,11 @@ import {
     Loader2,
     Bot,
     Send,
+    Activity,
+    CheckCircle,
+    AlertTriangle,
+    ExternalLink,
+    Newspaper,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
@@ -21,8 +26,11 @@ import {
     fetchEvents,
     fetchStarCount,
     fetchUserPRs,
+    fetchGitHubChangelog,
+    fetchGitHubStatus,
     timeAgo,
     type GitHubEvent,
+    type GitHubChangelogEntry,
 } from "../lib/github";
 
 function getGreeting(): string {
@@ -34,11 +42,15 @@ function getGreeting(): string {
 
 const Dashboard: React.FC = () => {
     const { user } = useAuthStore();
+    const navigate = useNavigate();
     const [repoCount, setRepoCount] = useState(0);
     const [starCount, setStarCount] = useState(0);
     const [events, setEvents] = useState<GitHubEvent[]>([]);
     const [openPRCount, setOpenPRCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [ghStatus, setGhStatus] = useState<{ indicator: string; description: string } | null>(null);
+    const [ghStatusError, setGhStatusError] = useState(false);
+    const [changelog, setChangelog] = useState<GitHubChangelogEntry[]>([]);
 
     useEffect(() => {
         Promise.all([
@@ -54,6 +66,14 @@ const Dashboard: React.FC = () => {
         ])
             .catch(() => {})
             .finally(() => setLoading(false));
+
+        fetchGitHubStatus()
+            .then(setGhStatus)
+            .catch(() => setGhStatusError(true));
+
+        fetchGitHubChangelog()
+            .then(setChangelog)
+            .catch(() => {});
     }, []);
 
     const recentEvents = events.slice(0, 12);
@@ -77,6 +97,38 @@ const Dashboard: React.FC = () => {
                         <StatCard icon={GitPullRequest} label="Open PRs" value={openPRCount} />
                     </div>
 
+                    {/* GitHub Status */}
+                    <div
+                        className="border rounded-lg p-4 mb-6 flex items-center justify-between cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
+                        style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+                        onClick={() => navigate("/status")}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                                 style={{ background: ghStatusError ? 'rgba(255,59,48,0.1)' : ghStatus?.indicator === 'none' ? 'rgba(52,199,89,0.1)' : 'rgba(255,149,0,0.1)' }}>
+                                {ghStatusError ? (
+                                    <AlertTriangle className="w-4 h-4" style={{ color: "var(--error)" }} />
+                                ) : ghStatus?.indicator === 'none' ? (
+                                    <CheckCircle className="w-4 h-4" style={{ color: "var(--success)" }} />
+                                ) : (
+                                    <AlertTriangle className="w-4 h-4" style={{ color: "var(--warning)" }} />
+                                )}
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <Activity className="w-3.5 h-3.5" style={{ color: "var(--text-tertiary)" }} />
+                                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                                        GitHub Status
+                                    </span>
+                                </div>
+                                <p className="text-xs mt-0.5" style={{ color: ghStatusError ? "var(--error)" : "var(--text-tertiary)" }}>
+                                    {ghStatusError ? "Failed to load status" : ghStatus?.description || "Loading..."}
+                                </p>
+                            </div>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5" style={{ color: "var(--text-tertiary)" }} />
+                    </div>
+
                     <div>
                         <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-secondary)" }}>
                             Recent Activity
@@ -96,6 +148,33 @@ const Dashboard: React.FC = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* GitHub Changelog */}
+                    {changelog.length > 0 && (
+                        <div className="mt-6">
+                            <h2 className="text-sm font-medium mb-3 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+                                <Newspaper className="w-3.5 h-3.5" /> Latest from GitHub Changelog
+                            </h2>
+                            <div
+                                className="border rounded-lg divide-y"
+                                style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+                            >
+                                {changelog.slice(0, 6).map((entry, i) => (
+                                    <a key={i}
+                                       href={entry.link}
+                                       target="_blank" rel="noopener noreferrer"
+                                       className="block px-4 py-3 hover:bg-[var(--bg-tertiary)] transition-colors">
+                                        <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                                            {entry.title}
+                                        </p>
+                                        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                                            {entry.pubDate ? timeAgo(new Date(entry.pubDate).toISOString()) : ''}
+                                        </p>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>
@@ -216,12 +295,32 @@ function capitalize(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function eventLink(event: GitHubEvent): string {
+    const [owner, repo] = event.repo.name.split("/");
+    switch (event.type) {
+        case "PullRequestEvent":
+        case "PullRequestReviewEvent":
+            return event.payload.pull_request
+                ? `/pr/${owner}/${repo}/${(event.payload as any).number || ''}`
+                : `/repos/${owner}/${repo}`;
+        case "IssuesEvent":
+        case "IssueCommentEvent":
+            return event.payload.issue
+                ? `/issue/${owner}/${repo}/${(event.payload as any).issue?.number || ''}`
+                : `/repos/${owner}/${repo}`;
+        default:
+            return `/repos/${owner}/${repo}`;
+    }
+}
+
 const EventItem: React.FC<{ event: GitHubEvent }> = ({ event }) => {
     const Icon = eventIcon(event.type);
     const color = eventColor(event.type);
+    const navigate = useNavigate();
 
     return (
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
+             onClick={() => navigate(eventLink(event))}>
             <div
                 className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{ background: `${color}15` }}

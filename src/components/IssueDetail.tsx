@@ -84,7 +84,8 @@ const IssueDetail: React.FC = () => {
               {issue.state}
             </span>
             <span>{owner}/{name}</span>
-            <span>{issue.user.login} opened {timeAgo(issue.created_at)}</span>
+            <span className="cursor-pointer hover:underline" onClick={() => navigate(`/profile/${issue.user.login}`)}>{issue.user.login}</span>
+            <span>opened {timeAgo(issue.created_at)}</span>
             {issue.labels.map(l => (
               <span key={l.name} className="px-1.5 py-0.5 rounded-full text-[10px]"
                     style={{ background: `#${l.color}30`, color: `#${l.color}` }}>{l.name}</span>
@@ -112,8 +113,8 @@ const IssueDetail: React.FC = () => {
               <div key={c.id} className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border)' }}>
                 <div className="px-4 py-2 text-xs flex items-center gap-2 border-b"
                      style={{ borderColor: 'var(--border)', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                  <img src={c.user.avatar_url} alt="" className="w-4 h-4 rounded-full" />
-                  <span className="font-medium">{c.user.login}</span>
+                  <img src={c.user.avatar_url} alt="" className="w-4 h-4 rounded-full cursor-pointer" onClick={() => navigate(`/profile/${c.user.login}`)} />
+                  <span className="font-medium cursor-pointer hover:underline" onClick={() => navigate(`/profile/${c.user.login}`)}>{c.user.login}</span>
                   <span>{timeAgo(c.created_at)}</span>
                 </div>
                 <div className="px-4 py-3 text-sm leading-relaxed"
