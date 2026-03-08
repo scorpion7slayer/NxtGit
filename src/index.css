@@ -1,116 +1,166 @@
-@import 'highlight.js/styles/github.css' (prefers-color-scheme: light);
-@import 'highlight.js/styles/github-dark.css' (prefers-color-scheme: dark);
+@import "highlight.js/styles/github.css" (prefers-color-scheme: light);
+@import "highlight.js/styles/github-dark.css" (prefers-color-scheme: dark);
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --accent: #007AFF;
-    --accent-hover: #0066DD;
-    --success: #34C759;
-    --warning: #FF9500;
-    --error: #FF3B30;
-    --text-primary: #1D1D1F;
-    --text-secondary: #6E6E73;
-    --text-tertiary: #AEAEB2;
-    --bg-primary: #F5F5F7;
-    --bg-secondary: #FFFFFF;
-    --bg-tertiary: #F0F0F2;
-    --border: rgba(0, 0, 0, 0.1);
-  }
-
-  @media (prefers-color-scheme: dark) {
     :root {
-      --text-primary: #F5F5F7;
-      --text-secondary: #98989D;
-      --text-tertiary: #636366;
-      --bg-primary: #0D1117;
-      --bg-secondary: #161B22;
-      --bg-tertiary: #21262D;
-      --border: rgba(255, 255, 255, 0.1);
+        --accent: #007aff;
+        --accent-hover: #0066dd;
+        --success: #34c759;
+        --warning: #ff9500;
+        --error: #ff3b30;
+        --text-primary: #1d1d1f;
+        --text-secondary: #6e6e73;
+        --text-tertiary: #aeaeb2;
+        --bg-primary: #f5f5f7;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #f0f0f2;
+        --border: rgba(0, 0, 0, 0.1);
     }
-  }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    -webkit-font-smoothing: antialiased;
-  }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --text-primary: #f5f5f7;
+            --text-secondary: #98989d;
+            --text-tertiary: #636366;
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+    }
 
-  * {
-    border-color: var(--border);
-  }
+    body {
+        font-family:
+            -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+            Arial, sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    * {
+        border-color: var(--border);
+    }
 }
 
 @layer components {
-  .btn-primary {
-    @apply px-4 py-2 rounded-md font-medium text-sm transition-colors;
-    background: var(--accent);
-    color: white;
-  }
+    .btn-primary {
+        @apply px-4 py-2 rounded-md font-medium text-sm transition-colors;
+        background: var(--accent);
+        color: white;
+    }
 
-  .btn-primary:hover {
-    background: var(--accent-hover);
-  }
+    .btn-primary:hover {
+        background: var(--accent-hover);
+    }
 
-  .btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 
-  .btn-secondary {
-    @apply px-4 py-2 rounded-md font-medium text-sm transition-colors;
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
+    .btn-secondary {
+        @apply px-4 py-2 rounded-md font-medium text-sm transition-colors;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
 
-  .btn-secondary:hover {
-    opacity: 0.8;
-  }
+    .btn-secondary:hover {
+        opacity: 0.8;
+    }
 
-  .input-glass {
-    @apply w-full px-3 py-2 rounded-md outline-none text-sm transition-all;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-  }
+    .input-glass {
+        @apply w-full px-3 py-2 rounded-md outline-none text-sm transition-all;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+    }
 
-  .input-glass:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15);
-  }
+    .input-glass:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15);
+    }
 
-  .input-glass::placeholder {
-    color: var(--text-tertiary);
-  }
+    .input-glass::placeholder {
+        color: var(--text-tertiary);
+    }
 
-  .nav-item {
-    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors cursor-pointer;
-    color: var(--text-secondary);
-  }
+    .nav-item {
+        @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors cursor-pointer;
+        color: var(--text-secondary);
+    }
 
-  .nav-item:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
+    .nav-item:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
 
-  .nav-item.active {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-weight: 500;
-  }
+    .nav-item.active {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-weight: 500;
+    }
 
-  .divide-y > :not(:first-child) {
-    border-color: var(--border);
-  }
+    .divide-y > :not(:first-child) {
+        border-color: var(--border);
+    }
 }
 
 /* Override highlight.js background to match our theme */
 .hljs {
-  background: transparent !important;
+    background: transparent !important;
+}
+
+/* Changelog content - responsive images and videos */
+.changelog-content img,
+.changelog-content video,
+.changelog-content picture,
+.changelog-content figure {
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    display: block;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+/* Force video elements to stay within container */
+.changelog-content video {
+    width: 100% !important;
+    max-height: 600px;
+}
+
+/* GitHub video containers */
+.changelog-content [data-video],
+.changelog-content .video-container,
+.changelog-content .embed-responsive {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.changelog-content iframe {
+    max-width: 100% !important;
+    width: 100% !important;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+/* Ensure all media elements respect container boundaries */
+.changelog-content * {
+    max-width: 100%;
+}
+
+/* Specific fix for GitHub changelog video embeds */
+.changelog-content div[style*="video"],
+.changelog-content div:has(> video),
+.changelog-content div:has(> iframe) {
+    max-width: 100% !important;
+    width: 100% !important;
 }
 
 /* =========================================
@@ -126,282 +176,298 @@
 /* --- Foundation: transparent so native vibrancy shows --- */
 html.platform-macos,
 html.platform-macos body {
-  background: transparent !important;
+    background: transparent !important;
 }
 
 /* --- Glass CSS variables (light) --- */
 html.platform-macos {
-  --bg-secondary: rgba(255, 255, 255, 0.15);
-  --bg-tertiary: rgba(255, 255, 255, 0.08);
-  --border: rgba(255, 255, 255, 0.25);
+    --bg-secondary: rgba(255, 255, 255, 0.15);
+    --bg-tertiary: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.25);
 
-  /* 3-layer glass system */
-  --glass-blur: blur(16px) saturate(180%);
-  --glass-highlight: inset 1px 1px 0 rgba(255, 255, 255, 0.6),
-                     inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
-  --glass-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.05);
-  --glass-depth: 0 4px 24px rgba(0, 0, 0, 0.06);
-  --glass-border: 0.5px solid rgba(255, 255, 255, 0.3);
+    /* 3-layer glass system */
+    --glass-blur: blur(16px) saturate(180%);
+    --glass-highlight:
+        inset 1px 1px 0 rgba(255, 255, 255, 0.6),
+        inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+    --glass-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.05);
+    --glass-depth: 0 4px 24px rgba(0, 0, 0, 0.06);
+    --glass-border: 0.5px solid rgba(255, 255, 255, 0.3);
 
-  /* Motion */
-  --spring: cubic-bezier(0.175, 0.885, 0.32, 2.2);
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    /* Motion */
+    --spring: cubic-bezier(0.175, 0.885, 0.32, 2.2);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* --- Glass CSS variables (dark) --- */
 @media (prefers-color-scheme: dark) {
-  html.platform-macos {
-    --bg-secondary: rgba(255, 255, 255, 0.06);
-    --bg-tertiary: rgba(255, 255, 255, 0.03);
-    --border: rgba(255, 255, 255, 0.08);
-    --glass-highlight: inset 1px 1px 0 rgba(255, 255, 255, 0.1),
-                       inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
-    --glass-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.3);
-    --glass-depth: 0 4px 24px rgba(0, 0, 0, 0.2);
-    --glass-border: 0.5px solid rgba(255, 255, 255, 0.08);
-  }
+    html.platform-macos {
+        --bg-secondary: rgba(255, 255, 255, 0.06);
+        --bg-tertiary: rgba(255, 255, 255, 0.03);
+        --border: rgba(255, 255, 255, 0.08);
+        --glass-highlight:
+            inset 1px 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+        --glass-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.3);
+        --glass-depth: 0 4px 24px rgba(0, 0, 0, 0.2);
+        --glass-border: 0.5px solid rgba(255, 255, 255, 0.08);
+    }
 }
 
 /* --- Layout regions --- */
 html.platform-macos .layout-root {
-  background: transparent !important;
+    background: transparent !important;
 }
 
 html.platform-macos .layout-sidebar {
-  background: transparent !important;
-  border-right: 0.5px solid rgba(255, 255, 255, 0.15) !important;
+    background: transparent !important;
+    border-right: 0.5px solid rgba(255, 255, 255, 0.15) !important;
 }
 
 @media (prefers-color-scheme: dark) {
-  html.platform-macos .layout-sidebar {
-    border-right-color: rgba(255, 255, 255, 0.05) !important;
-  }
+    html.platform-macos .layout-sidebar {
+        border-right-color: rgba(255, 255, 255, 0.05) !important;
+    }
 }
 
 /* Main content: semi-opaque glass for readability */
 html.platform-macos .layout-main {
-  background: rgba(251, 251, 253, 0.7) !important;
-  backdrop-filter: blur(40px) saturate(120%);
-  -webkit-backdrop-filter: blur(40px) saturate(120%);
+    background: rgba(251, 251, 253, 0.7) !important;
+    backdrop-filter: blur(40px) saturate(120%);
+    -webkit-backdrop-filter: blur(40px) saturate(120%);
 }
 
 @media (prefers-color-scheme: dark) {
-  html.platform-macos .layout-main {
-    background: rgba(13, 17, 23, 0.7) !important;
-  }
+    html.platform-macos .layout-main {
+        background: rgba(13, 17, 23, 0.7) !important;
+    }
 }
 
 /* --- Glass cards / panels --- */
 html.platform-macos .border.rounded-lg,
 html.platform-macos .border.rounded-xl {
-  border: var(--glass-border) !important;
-  border-radius: 20px !important;
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-highlight), var(--glass-shadow), var(--glass-depth);
-  transition: box-shadow 0.3s var(--ease), transform 0.3s var(--ease);
+    border: var(--glass-border) !important;
+    border-radius: 20px !important;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-highlight), var(--glass-shadow), var(--glass-depth);
+    transition:
+        box-shadow 0.3s var(--ease),
+        transform 0.3s var(--ease);
 }
 
 html.platform-macos .border.rounded-xl {
-  border-radius: 24px !important;
+    border-radius: 24px !important;
 }
 
 /* --- Pill nav items with spring motion --- */
 html.platform-macos .nav-item {
-  border-radius: 12px;
-  transition: all 0.25s var(--ease);
+    border-radius: 12px;
+    transition: all 0.25s var(--ease);
 }
 
 html.platform-macos .nav-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 html.platform-macos .nav-item.active {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
 
 @media (prefers-color-scheme: dark) {
-  html.platform-macos .nav-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
-  html.platform-macos .nav-item.active {
-    background: rgba(255, 255, 255, 0.1);
-  }
+    html.platform-macos .nav-item:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+    html.platform-macos .nav-item.active {
+        background: rgba(255, 255, 255, 0.1);
+    }
 }
 
 /* --- Capsule / pill buttons --- */
 html.platform-macos .btn-primary {
-  border-radius: 20px;
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25),
-              0 2px 12px rgba(0, 122, 255, 0.3);
-  transition: all 0.2s var(--ease);
+    border-radius: 20px;
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    box-shadow:
+        inset 0 0.5px 0 rgba(255, 255, 255, 0.25),
+        0 2px 12px rgba(0, 122, 255, 0.3);
+    transition: all 0.2s var(--ease);
 }
 
 html.platform-macos .btn-primary:hover {
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.3),
-              0 4px 20px rgba(0, 122, 255, 0.4);
+    box-shadow:
+        inset 0 0.5px 0 rgba(255, 255, 255, 0.3),
+        0 4px 20px rgba(0, 122, 255, 0.4);
 }
 
 html.platform-macos .btn-primary:active {
-  transform: scale(0.97);
+    transform: scale(0.97);
 }
 
 html.platform-macos .btn-secondary {
-  border-radius: 20px;
-  background: var(--bg-secondary);
-  border: var(--glass-border);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  box-shadow: var(--glass-highlight);
-  transition: all 0.2s var(--ease);
+    border-radius: 20px;
+    background: var(--bg-secondary);
+    border: var(--glass-border);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    box-shadow: var(--glass-highlight);
+    transition: all 0.2s var(--ease);
 }
 
 html.platform-macos .btn-secondary:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.22);
-  box-shadow: var(--glass-highlight), 0 0 12px rgba(255, 255, 255, 0.15);
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow:
+        var(--glass-highlight),
+        0 0 12px rgba(255, 255, 255, 0.15);
 }
 
 html.platform-macos .btn-secondary:active {
-  transform: scale(0.97);
+    transform: scale(0.97);
 }
 
 @media (prefers-color-scheme: dark) {
-  html.platform-macos .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    box-shadow: var(--glass-highlight), 0 0 12px rgba(255, 255, 255, 0.05);
-  }
+    html.platform-macos .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        box-shadow:
+            var(--glass-highlight),
+            0 0 12px rgba(255, 255, 255, 0.05);
+    }
 }
 
 /* --- Glass inputs --- */
 html.platform-macos .input-glass {
-  border-radius: 14px;
-  border: var(--glass-border);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  box-shadow: var(--glass-highlight);
-  transition: all 0.2s var(--ease);
+    border-radius: 14px;
+    border: var(--glass-border);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    box-shadow: var(--glass-highlight);
+    transition: all 0.2s var(--ease);
 }
 
 html.platform-macos .input-glass:focus {
-  border-color: rgba(0, 122, 255, 0.5);
-  box-shadow: var(--glass-highlight), 0 0 0 3px rgba(0, 122, 255, 0.15);
+    border-color: rgba(0, 122, 255, 0.5);
+    box-shadow:
+        var(--glass-highlight),
+        0 0 0 3px rgba(0, 122, 255, 0.15);
 }
 
 /* --- Sidebar header / drag region --- */
 .sidebar-header {
-  padding-top: 20px;
+    padding-top: 20px;
 }
 
 html.platform-macos .sidebar-header {
-  padding-top: 42px;
-  -webkit-app-region: drag;
-  app-region: drag;
+    padding-top: 42px;
+    -webkit-app-region: drag;
+    app-region: drag;
 }
 
 /* --- Dividers --- */
 html.platform-macos .divide-y > :not(:first-child) {
-  border-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html.platform-macos .border-b {
-  border-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 html.platform-macos .border-t {
-  border-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 @media (prefers-color-scheme: dark) {
-  html.platform-macos .divide-y > :not(:first-child),
-  html.platform-macos .border-b,
-  html.platform-macos .border-t {
-    border-color: rgba(255, 255, 255, 0.05) !important;
-  }
+    html.platform-macos .divide-y > :not(:first-child),
+    html.platform-macos .border-b,
+    html.platform-macos .border-t {
+        border-color: rgba(255, 255, 255, 0.05) !important;
+    }
 }
 
 /* --- Scrollbar --- */
 html.platform-macos ::-webkit-scrollbar {
-  width: 6px;
+    width: 6px;
 }
 
 html.platform-macos ::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 html.platform-macos ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 3px;
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 3px;
 }
 
 html.platform-macos ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.22);
+    background: rgba(0, 0, 0, 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
-  html.platform-macos ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
-  }
-  html.platform-macos ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.22);
-  }
+    html.platform-macos ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12);
+    }
+    html.platform-macos ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.22);
+    }
 }
 
 /* --- Login page glass --- */
 html.platform-macos .login-page {
-  background: transparent !important;
+    background: transparent !important;
 }
 
 .login-card {
-  border-radius: 28px;
-  padding: 2.5rem;
+    border-radius: 28px;
+    padding: 2.5rem;
 }
 
 html:not(.platform-macos) .login-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
 }
 
 html.platform-macos .login-card {
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: var(--glass-border);
-  box-shadow: var(--glass-highlight), var(--glass-shadow),
-              0 8px 40px rgba(0, 0, 0, 0.06),
-              0 30px 80px rgba(0, 0, 0, 0.04);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: var(--glass-border);
+    box-shadow:
+        var(--glass-highlight),
+        var(--glass-shadow),
+        0 8px 40px rgba(0, 0, 0, 0.06),
+        0 30px 80px rgba(0, 0, 0, 0.04);
 }
 
 @media (prefers-color-scheme: dark) {
-  html.platform-macos .login-card {
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: var(--glass-highlight), var(--glass-shadow),
-                0 8px 40px rgba(0, 0, 0, 0.2),
-                0 30px 80px rgba(0, 0, 0, 0.12);
-  }
+    html.platform-macos .login-card {
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow:
+            var(--glass-highlight),
+            var(--glass-shadow),
+            0 8px 40px rgba(0, 0, 0, 0.2),
+            0 30px 80px rgba(0, 0, 0, 0.12);
+    }
 }
 
 /* --- Login drag region --- */
 .login-drag-region {
-  display: none;
+    display: none;
 }
 
 html.platform-macos .login-drag-region {
-  display: block;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 38px;
-  -webkit-app-region: drag;
-  z-index: 100;
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 38px;
+    -webkit-app-region: drag;
+    z-index: 100;
 }
 
 /* GitHub changelog article content */
@@ -409,64 +475,72 @@ html.platform-macos .login-drag-region {
 .changelog-content h2,
 .changelog-content h3,
 .changelog-content h4 {
-  font-weight: 600;
-  margin-top: 1.25em;
-  margin-bottom: 0.5em;
-  color: var(--text-primary);
+    font-weight: 600;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    color: var(--text-primary);
 }
-.changelog-content h2 { font-size: 1.125rem; }
-.changelog-content h3 { font-size: 1rem; }
+.changelog-content h2 {
+    font-size: 1.125rem;
+}
+.changelog-content h3 {
+    font-size: 1rem;
+}
 .changelog-content p {
-  margin: 0.75em 0;
-  font-size: 0.875rem;
-  line-height: 1.65;
-  color: var(--text-secondary);
+    margin: 0.75em 0;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
 }
 .changelog-content a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 .changelog-content img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-  margin: 1em 0;
-  border: 1px solid var(--border);
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1em 0;
+    border: 1px solid var(--border);
 }
 .changelog-content ul,
 .changelog-content ol {
-  margin: 0.75em 0;
-  padding-left: 1.5em;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+    margin: 0.75em 0;
+    padding-left: 1.5em;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
 }
 .changelog-content li {
-  margin: 0.35em 0;
-  line-height: 1.6;
+    margin: 0.35em 0;
+    line-height: 1.6;
 }
-.changelog-content ul { list-style-type: disc; }
-.changelog-content ol { list-style-type: decimal; }
+.changelog-content ul {
+    list-style-type: disc;
+}
+.changelog-content ol {
+    list-style-type: decimal;
+}
 .changelog-content code {
-  font-size: 0.8rem;
-  padding: 0.15em 0.4em;
-  border-radius: 0.25rem;
-  background: var(--bg-tertiary);
+    font-size: 0.8rem;
+    padding: 0.15em 0.4em;
+    border-radius: 0.25rem;
+    background: var(--bg-tertiary);
 }
 .changelog-content pre {
-  margin: 0.75em 0;
-  padding: 0.75em 1em;
-  border-radius: 0.5rem;
-  background: var(--bg-tertiary);
-  overflow-x: auto;
-  font-size: 0.8rem;
+    margin: 0.75em 0;
+    padding: 0.75em 1em;
+    border-radius: 0.5rem;
+    background: var(--bg-tertiary);
+    overflow-x: auto;
+    font-size: 0.8rem;
 }
 .changelog-content blockquote {
-  margin: 0.75em 0;
-  padding: 0.5em 1em;
-  border-left: 3px solid var(--accent);
-  background: var(--bg-tertiary);
-  border-radius: 0 0.25rem 0.25rem 0;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+    margin: 0.75em 0;
+    padding: 0.5em 1em;
+    border-left: 3px solid var(--accent);
+    background: var(--bg-tertiary);
+    border-radius: 0 0.25rem 0.25rem 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }

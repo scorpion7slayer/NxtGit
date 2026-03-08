@@ -34,7 +34,7 @@
     },
     "bundle": {
         "active": true,
-        "targets": ["dmg", "nsis"],
+        "targets": "all",
         "category": "DeveloperTool",
         "copyright": "MIT",
         "macOS": {

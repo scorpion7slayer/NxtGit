@@ -567,12 +567,23 @@ const Settings: React.FC = () => {
                 className="mt-8 pt-6 border-t"
                 style={{ borderColor: "var(--border)" }}
             >
-                <p
-                    className="text-xs text-center"
+                <div
+                    className="text-xs text-center flex justify-center items-center space-x-2"
                     style={{ color: "var(--text-tertiary)" }}
                 >
-                    NxtGit v0.1.0
-                </p>
+                    <span>NxtGit v1.0.0</span>
+                    <span>
+                        ©{" "}
+                        <a
+                            href="https://github.com/scorpion7slayer"
+                            className="underline hover:text-[var(--accent)]"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            scorpion7slayer
+                        </a>
+                    </span>
+                </div>
             </div>
         </div>
     );
