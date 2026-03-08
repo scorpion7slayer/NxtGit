@@ -214,7 +214,7 @@ const AppChangelog: React.FC = () => {
                       </p>
                       {entry.description && (
                         <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-                          {entry.description.replace(/<[^>]*>/g, '').substring(0, 200)}
+                          {DOMPurify.sanitize(entry.description, { ALLOWED_TAGS: [] }).substring(0, 200)}
                         </p>
                       )}
                       <div className="flex items-center gap-2 mt-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>

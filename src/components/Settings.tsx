@@ -16,6 +16,8 @@ import {
     setOllamaBaseURL,
     type CopilotDeviceCode,
 } from "../lib/ai";
+import { open } from "@tauri-apps/plugin-shell";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { fetchSubscription, type GitHubSubscription } from "../lib/github";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
@@ -70,12 +72,14 @@ const Settings: React.FC = () => {
             setCopilotDeviceData(deviceData);
 
             try {
-                await navigator.clipboard.writeText(deviceData.user_code);
+                await writeText(deviceData.user_code);
                 setCopilotCopied(true);
                 setTimeout(() => setCopilotCopied(false), 3000);
             } catch {
                 /* clipboard may not be available */
             }
+
+            await open(deviceData.verification_uri);
 
             const interval = (deviceData.interval || 5) * 1000;
             const expiresAt = Date.now() + deviceData.expires_in * 1000;
@@ -340,7 +344,7 @@ const Settings: React.FC = () => {
                                             </code>
                                             <button
                                                 onClick={async () => {
-                                                    await navigator.clipboard.writeText(
+                                                    await writeText(
                                                         copilotDeviceData.user_code,
                                                     );
                                                     setCopilotCopied(true);

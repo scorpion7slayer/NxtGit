@@ -1,7 +1,6 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { useAuthStore } from "../stores/authStore";
-import { open } from "@tauri-apps/plugin-shell";
 
 const settingsStore = new LazyStore("settings.json");
 
@@ -41,7 +40,7 @@ export async function startCopilotDeviceFlow(): Promise<CopilotDeviceCode> {
     ) {
         throw new Error("Invalid verification URI from GitHub");
     }
-    await open(data.verification_uri);
+    // Don't open browser here — let the caller copy the code first
     return data;
 }
 
@@ -181,15 +180,20 @@ export const AI_PROVIDERS: AIProvider[] = [
         name: "GitHub Copilot",
         placeholder: "",
         description: "Uses your GitHub OAuth token — no extra key needed",
-        defaultModel: "gpt-4o",
+        defaultModel: "gpt-4.1",
         baseURL: "https://api.githubcopilot.com",
         usesOAuth: true,
         modelsEndpoint: "/models",
         models: [
+            { id: "gpt-4.1", name: "GPT-4.1" },
+            { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
             { id: "gpt-4o", name: "GPT-4o" },
             { id: "gpt-4o-mini", name: "GPT-4o Mini" },
             { id: "o3-mini", name: "o3-mini" },
+            { id: "o4-mini", name: "o4-mini" },
+            { id: "claude-sonnet-4", name: "Claude Sonnet 4" },
             { id: "claude-3.5-sonnet", name: "Claude 3.5 Sonnet" },
+            { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
         ],
     },
     {
@@ -220,6 +224,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         description: "Claude models",
         defaultModel: "claude-sonnet-4-20250514",
         baseURL: "https://api.anthropic.com",
+        modelsEndpoint: "/v1/models",
         models: [
             { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
             { id: "claude-sonnet-4-5-20250514", name: "Claude Sonnet 4.5" },
@@ -272,6 +277,7 @@ export const AI_PROVIDERS: AIProvider[] = [
         description: "MiniMax AI models",
         defaultModel: "MiniMax-Text-01",
         baseURL: "https://api.minimax.chat/v1",
+        modelsEndpoint: "/models",
         models: [
             { id: "MiniMax-Text-01", name: "MiniMax Text 01" },
             { id: "MiniMax-Text-02", name: "MiniMax Text 02" },
@@ -380,7 +386,7 @@ export async function fetchProviderModels(
     try {
         const headers: Record<string, string> = {
             Accept: "application/json",
-            "User-Agent": "NxtGit/0.1.0",
+            "User-Agent": "NxtGit/1.0.0",
         };
 
         if (providerId === "anthropic") {
@@ -445,7 +451,9 @@ export async function fetchProviderModels(
             data?: {
                 id: string;
                 name?: string;
+                display_name?: string;
                 model_picker_enabled?: boolean;
+                type?: string;
             }[];
         };
         const list = data.data;
@@ -457,6 +465,10 @@ export async function fetchProviderModels(
                 // Copilot models have a model_picker_enabled flag
                 if (providerId === "github-copilot") {
                     return m.model_picker_enabled !== false;
+                }
+                // Anthropic: only keep model type entries
+                if (providerId === "anthropic") {
+                    return m.type === "model";
                 }
                 const id = m.id.toLowerCase();
                 // Filter out embedding / moderation / tts / whisper / dall-e models
@@ -472,7 +484,7 @@ export async function fetchProviderModels(
             })
             .map((m) => ({
                 id: m.id,
-                name: m.name || m.id,
+                name: m.display_name || m.name || m.id,
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -514,7 +526,7 @@ function buildHeaders(
 ): Record<string, string> {
     const base: Record<string, string> = {
         "Content-Type": "application/json",
-        "User-Agent": "NxtGit/0.1.0",
+        "User-Agent": "NxtGit/1.0.0",
     };
 
     if (providerId === "anthropic") {

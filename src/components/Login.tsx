@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { Github, AlertCircle, Copy, CheckCircle } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { fetch } from "@tauri-apps/plugin-http";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useAuthStore } from "../stores/authStore";
 import logo from "../assets/logo.svg";
 
@@ -194,7 +195,7 @@ const Login: React.FC = () => {
             }
 
             try {
-                await navigator.clipboard.writeText(data.user_code);
+                await writeText(data.user_code);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 3000);
             } catch {
@@ -219,7 +220,7 @@ const Login: React.FC = () => {
 
     const copyCode = async () => {
         if (deviceData) {
-            await navigator.clipboard.writeText(deviceData.user_code);
+            await writeText(deviceData.user_code);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
