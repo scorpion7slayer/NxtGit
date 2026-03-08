@@ -69,7 +69,7 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 - Windows 10+ / macOS 14+ / Linux (Ubuntu 22.04+)
 - Node.js 18+
-- Rust toolchain (edition 2021, 1.70+)
+- Rust toolchain (edition 2021, 1.77.2+)
 
 ### Installation
 

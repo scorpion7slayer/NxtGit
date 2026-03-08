@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-NxtGit is currently in early development (v0.1.x). Security updates are provided for the latest version on the `main` branch.
+Security updates are provided for the latest stable version on the `main` branch.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+| 1.0.x   | :white_check_mark: |
+| < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -36,7 +36,7 @@ Alternatively, you can contact the maintainer directly via GitHub.
 
 This policy applies to:
 - The NxtGit desktop application (Tauri + TypeScript)
-- API token handling (GitHub, Anthropic, OpenAI)
+- API token handling (GitHub, GitHub Copilot, OpenRouter, Anthropic, OpenAI, Ollama, Moonshot, Kilocode, MiniMax)
 - Any secrets stored via `@tauri-apps/plugin-store`
 
 ## Out of Scope
