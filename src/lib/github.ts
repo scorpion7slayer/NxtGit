@@ -10,7 +10,7 @@ async function ghFetch<T>(path: string): Promise<T> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/0.1.0",
+            "User-Agent": "NxtGit/1.0.0",
         },
     });
 
@@ -28,7 +28,7 @@ async function ghFetchRaw(path: string): Promise<string> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github.raw+json",
-            "User-Agent": "NxtGit/0.1.0",
+            "User-Agent": "NxtGit/1.0.0",
         },
     });
 
@@ -231,7 +231,7 @@ export async function fetchSubscription(): Promise<GitHubSubscription> {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         Accept: "application/json",
-                        "User-Agent": "NxtGit/0.1.0",
+                        "User-Agent": "NxtGit/1.0.0",
                     },
                 },
             );
@@ -377,7 +377,7 @@ async function ghPost<T>(path: string, body: Record<string, unknown>): Promise<T
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/0.1.0",
+            "User-Agent": "NxtGit/1.0.0",
             "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -396,7 +396,7 @@ async function ghPatch<T>(path: string, body: Record<string, unknown>): Promise<
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/0.1.0",
+            "User-Agent": "NxtGit/1.0.0",
             "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -415,7 +415,26 @@ async function ghPut<T>(path: string, body: Record<string, unknown> = {}): Promi
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/0.1.0",
+            "User-Agent": "NxtGit/1.0.0",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+    return response.json();
+}
+
+async function ghDelete<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}${path}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "NxtGit/1.0.0",
             "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -500,6 +519,58 @@ export async function addLabels(
         `/repos/${owner}/${name}/issues/${number}/labels`,
         { labels },
     );
+}
+
+export async function fetchFileInfo(
+    owner: string,
+    name: string,
+    path: string,
+    ref?: string,
+): Promise<{ sha: string; size: number }> {
+    const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+    return ghFetch(`/repos/${owner}/${name}/contents/${path}${q}`);
+}
+
+export async function createOrUpdateFile(
+    owner: string,
+    repo: string,
+    path: string,
+    content: string,
+    message: string,
+    sha?: string,
+    branch?: string,
+): Promise<{ content: { sha: string }; commit: { sha: string; message: string } }> {
+    const bytes = new TextEncoder().encode(content);
+    const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join("");
+    const body: Record<string, unknown> = { message, content: btoa(binary) };
+    if (sha) body.sha = sha;
+    if (branch) body.branch = branch;
+    return ghPut(`/repos/${owner}/${repo}/contents/${path}`, body);
+}
+
+export async function deleteFile(
+    owner: string,
+    repo: string,
+    path: string,
+    sha: string,
+    message: string,
+    branch?: string,
+): Promise<{ commit: { sha: string } }> {
+    const body: Record<string, unknown> = { message, sha };
+    if (branch) body.branch = branch;
+    return ghDelete(`/repos/${owner}/${repo}/contents/${path}`, body);
+}
+
+export async function createBranch(
+    owner: string,
+    repo: string,
+    branchName: string,
+    fromSha: string,
+): Promise<{ ref: string }> {
+    return ghPost(`/repos/${owner}/${repo}/git/refs`, {
+        ref: `refs/heads/${branchName}`,
+        sha: fromSha,
+    });
 }
 
 export async function fetchRepoBranches(
@@ -687,7 +758,7 @@ export async function fetchUserRepos(
 export async function fetchGitHubChangelog(): Promise<GitHubChangelogEntry[]> {
     const response = await fetch("https://github.blog/changelog/feed/", {
         method: "GET",
-        headers: { "User-Agent": "NxtGit/0.1.0", Accept: "application/rss+xml" },
+        headers: { "User-Agent": "NxtGit/1.0.0", Accept: "application/rss+xml" },
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const xml = await response.text();

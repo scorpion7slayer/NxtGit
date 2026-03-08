@@ -5,12 +5,16 @@ import {
   GitPullRequest, GitCommit, Loader2, ChevronRight, ChevronDown,
   PlayCircle, CheckCircle, XCircle, Clock, MinusCircle, Tag,
   Users, Shield, Package, Download,
+  Pencil, Trash2, Eye, FilePlus, Image as ImageIcon,
 } from 'lucide-react';
 import hljs from 'highlight.js';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
-  fetchRepoDetail, fetchRepoContents, fetchFileContent,
+  fetchRepoDetail, fetchRepoContents, fetchFileContent, fetchFileInfo,
   fetchRepoIssues, fetchRepoPRs, fetchRepoCommits, fetchWorkflowRuns,
   fetchRepoReleases, fetchRepoBranches, fetchRepoContributors,
+  createOrUpdateFile, deleteFile,
   langColor, timeAgo, detectLanguage,
   type GitHubRepo, type GitHubContent, type GitHubIssue,
   type GitHubRepoPR, type GitHubCommit, type GitHubWorkflowRun,
@@ -152,25 +156,68 @@ const RepoDetail: React.FC = () => {
   );
 };
 
-// --- Code Tab with highlight.js ---
+// --- Helpers ---
+
+const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','svg','webp','ico','bmp','avif']);
+const MARKDOWN_EXTS = new Set(['md','mdx','markdown']);
+const isImageFile = (f: string) => IMAGE_EXTS.has(f.split('.').pop()?.toLowerCase() || '');
+const isMarkdownFile = (f: string) => MARKDOWN_EXTS.has(f.split('.').pop()?.toLowerCase() || '');
+
+// --- Code Tab with highlight.js + edit/commit/preview ---
 
 const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ owner, name, branch }) => {
   const [contents, setContents] = useState<GitHubContent[]>([]);
   const [currentPath, setCurrentPath] = useState('');
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFileView, setIsFileView] = useState(false);
   const codeRef = useRef<HTMLElement>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Edit state
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [fileSha, setFileSha] = useState<string | null>(null);
+  const [commitMsg, setCommitMsg] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [showCommitDialog, setShowCommitDialog] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // New file state
+  const [creating, setCreating] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const [newFileContent, setNewFileContent] = useState('');
+  const [newFileCommitMsg, setNewFileCommitMsg] = useState('');
+
+  // Markdown preview & delete
+  const [showPreview, setShowPreview] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setCurrentPath('');
     setFileContent(null);
+    setEditing(false);
+    setCreating(false);
+    setIsFileView(false);
   }, [branch]);
 
   useEffect(() => {
     setLoading(true);
     setFileContent(null);
+    setContents([]);
+    setIsFileView(false);
+    setFileSha(null);
+    setEditing(false);
+    setSaveSuccess(false);
+    setSaveError(null);
+    setShowPreview(false);
+    setShowDeleteConfirm(false);
+
     fetchRepoContents(owner, name, currentPath, branch)
       .then(items => {
+        setIsFileView(false);
         setContents([...items].sort((a, b) => {
           if (a.type === 'dir' && b.type !== 'dir') return -1;
           if (a.type !== 'dir' && b.type === 'dir') return 1;
@@ -178,52 +225,259 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ ow
         }));
       })
       .catch(() => {
-        fetchFileContent(owner, name, currentPath, branch).then(setFileContent).catch(() => {});
+        setIsFileView(true);
+        const fn = currentPath.split('/').pop() || '';
+        if (!isImageFile(fn)) {
+          fetchFileContent(owner, name, currentPath, branch).then(setFileContent).catch(() => {});
+        }
+        fetchFileInfo(owner, name, currentPath, branch).then(info => setFileSha(info.sha)).catch(() => {});
       })
       .finally(() => setLoading(false));
-  }, [owner, name, currentPath, branch]);
+  }, [owner, name, currentPath, branch, refreshKey]);
 
   useEffect(() => {
-    if (fileContent !== null && codeRef.current) {
+    if (fileContent !== null && codeRef.current && !editing && !showPreview) {
       codeRef.current.removeAttribute('data-highlighted');
       hljs.highlightElement(codeRef.current);
     }
-  }, [fileContent, currentPath]);
+  }, [fileContent, currentPath, editing, showPreview]);
 
   const breadcrumbs = currentPath ? currentPath.split('/') : [];
   const fileName = breadcrumbs[breadcrumbs.length - 1] || '';
   const lang = detectLanguage(fileName);
+  const isImage = isImageFile(fileName);
+  const isMd = isMarkdownFile(fileName);
+
+  const handleSave = async () => {
+    if (!commitMsg.trim()) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await createOrUpdateFile(owner, name, currentPath, editContent, commitMsg, fileSha || undefined, branch);
+      setFileContent(editContent);
+      setEditing(false);
+      setSaveSuccess(true);
+      setShowCommitDialog(false);
+      fetchFileInfo(owner, name, currentPath, branch).then(info => setFileSha(info.sha)).catch(() => {});
+    } catch (e: any) {
+      setSaveError(e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!fileSha) return;
+    setDeleting(true);
+    try {
+      await deleteFile(owner, name, currentPath, fileSha, `Delete ${fileName}`, branch);
+      const p = currentPath.split('/'); p.pop();
+      setCurrentPath(p.join('/'));
+      setShowDeleteConfirm(false);
+    } catch (e: any) {
+      setSaveError(e.message || 'Failed to delete');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCreateFile = async () => {
+    if (!newFileName.trim() || !newFileCommitMsg.trim()) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const fullPath = currentPath ? `${currentPath}/${newFileName}` : newFileName;
+      await createOrUpdateFile(owner, name, fullPath, newFileContent, newFileCommitMsg, undefined, branch);
+      setCreating(false);
+      setNewFileName('');
+      setNewFileContent('');
+      setNewFileCommitMsg('');
+      setRefreshKey(k => k + 1);
+    } catch (e: any) {
+      setSaveError(e.message || 'Failed to create file');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-tertiary)' }} /></div>;
   }
 
-  if (fileContent !== null) {
+  // --- Creating new file ---
+  if (creating) {
     return (
       <div>
-        <Breadcrumbs parts={breadcrumbs} onNavigate={setCurrentPath} />
-        <div className="border rounded-lg overflow-hidden mt-2" style={{ borderColor: 'var(--border)' }}>
-          <div className="px-4 py-2 text-xs border-b flex items-center justify-between"
-               style={{ borderColor: 'var(--border)', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-            <span>{fileName}</span>
-            {lang && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-secondary)' }}>{lang}</span>}
+        <Breadcrumbs parts={breadcrumbs} onNavigate={(p) => { setCreating(false); setCurrentPath(p); }} />
+        <div className="border rounded-lg overflow-hidden mt-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
+          <div className="px-4 py-3 border-b flex items-center gap-3"
+               style={{ borderColor: 'var(--border)', background: 'var(--bg-tertiary)' }}>
+            <FilePlus className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>New file in {currentPath || '/'}</span>
           </div>
-          <div className="overflow-auto max-h-[65vh]" style={{ background: 'var(--bg-secondary)' }}>
-            <pre className="p-4 text-[13px] leading-relaxed m-0"><code
-              ref={codeRef}
-              className={lang ? `language-${lang}` : ''}
-              style={{ background: 'transparent' }}
-            >{fileContent}</code></pre>
+          <div className="p-4 space-y-3">
+            <input value={newFileName} onChange={e => setNewFileName(e.target.value)}
+                   placeholder="filename.ext" className="input-glass" autoFocus />
+            <textarea value={newFileContent} onChange={e => setNewFileContent(e.target.value)}
+                      placeholder="File content..." className="input-glass font-mono text-sm"
+                      style={{ minHeight: 200, resize: 'vertical' }} />
+            <input value={newFileCommitMsg} onChange={e => setNewFileCommitMsg(e.target.value)}
+                   placeholder="Commit message" className="input-glass" />
+            {saveError && <p className="text-xs" style={{ color: 'var(--error)' }}>{saveError}</p>}
+            <div className="flex gap-2">
+              <button onClick={handleCreateFile} disabled={saving || !newFileName.trim() || !newFileCommitMsg.trim()}
+                      className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1">
+                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <><GitCommit className="w-3 h-3" /> Commit new file</>}
+              </button>
+              <button onClick={() => { setCreating(false); setSaveError(null); }} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  // --- File viewer (code, image, markdown) ---
+  if (isFileView) {
+    const rawUrl = `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${currentPath}`;
+
+    return (
+      <div>
+        <Breadcrumbs parts={breadcrumbs} onNavigate={setCurrentPath} />
+
+        {saveSuccess && (
+          <div className="mt-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2"
+               style={{ background: 'rgba(52,199,89,0.1)', color: 'var(--success)' }}>
+            <CheckCircle className="w-3.5 h-3.5" /> Changes committed successfully
+          </div>
+        )}
+
+        <div className="border rounded-lg overflow-hidden mt-2" style={{ borderColor: 'var(--border)' }}>
+          {/* File header toolbar */}
+          <div className="px-4 py-2 text-xs border-b flex items-center justify-between gap-2"
+               style={{ borderColor: 'var(--border)', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+            <div className="flex items-center gap-2">
+              {isImage && <ImageIcon className="w-3.5 h-3.5" style={{ color: 'var(--success)' }} />}
+              <span>{fileName}</span>
+              {lang && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-secondary)' }}>{lang}</span>}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isMd && !editing && (
+                <button onClick={() => setShowPreview(!showPreview)}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-[11px] hover:bg-[var(--bg-secondary)] transition-colors"
+                        style={{ color: showPreview ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                  <Eye className="w-3 h-3" /> {showPreview ? 'Code' : 'Preview'}
+                </button>
+              )}
+              {!isImage && !editing && (
+                <button onClick={() => { setEditContent(fileContent || ''); setEditing(true); setCommitMsg(`Update ${fileName}`); setSaveError(null); setSaveSuccess(false); }}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-[11px] hover:bg-[var(--bg-secondary)] transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}>
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
+              )}
+              {!editing && fileSha && (
+                <button onClick={() => setShowDeleteConfirm(true)}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-[11px] hover:bg-[var(--bg-secondary)] transition-colors"
+                        style={{ color: 'var(--error)' }}>
+                  <Trash2 className="w-3 h-3" /> Delete
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Image preview */}
+          {isImage && (
+            <div className="p-6 flex justify-center" style={{ background: 'var(--bg-secondary)' }}>
+              <img src={rawUrl} alt={fileName} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }} />
+            </div>
+          )}
+
+          {/* Markdown preview */}
+          {!isImage && showPreview && isMd && fileContent !== null && (
+            <div className="p-6 overflow-auto max-h-[65vh] changelog-content" style={{ background: 'var(--bg-secondary)' }}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{fileContent}</ReactMarkdown>
+            </div>
+          )}
+
+          {/* Edit mode */}
+          {!isImage && editing && (
+            <div style={{ background: 'var(--bg-secondary)' }}>
+              <textarea value={editContent} onChange={e => setEditContent(e.target.value)}
+                        className="w-full p-4 text-[13px] leading-relaxed font-mono outline-none"
+                        style={{ background: 'transparent', color: 'var(--text-primary)', minHeight: '50vh', resize: 'vertical', border: 'none' }} />
+              <div className="px-4 py-3 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--border)' }}>
+                {showCommitDialog ? (
+                  <>
+                    <input value={commitMsg} onChange={e => setCommitMsg(e.target.value)}
+                           placeholder="Commit message" className="input-glass flex-1 text-xs" autoFocus />
+                    <button onClick={handleSave} disabled={saving || !commitMsg.trim()}
+                            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1">
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <><GitCommit className="w-3 h-3" /> Commit</>}
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setShowCommitDialog(true)} className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1">
+                    <GitCommit className="w-3 h-3" /> Commit changes
+                  </button>
+                )}
+                <button onClick={() => { setEditing(false); setSaveError(null); setShowCommitDialog(false); }} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
+                {saveError && <p className="text-xs w-full" style={{ color: 'var(--error)' }}>{saveError}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* Code view (read-only) */}
+          {!isImage && !editing && !showPreview && fileContent !== null && (
+            <div className="overflow-auto max-h-[65vh]" style={{ background: 'var(--bg-secondary)' }}>
+              <pre className="p-4 text-[13px] leading-relaxed m-0"><code
+                ref={codeRef}
+                className={lang ? `language-${lang}` : ''}
+                style={{ background: 'transparent' }}
+              >{fileContent}</code></pre>
+            </div>
+          )}
+        </div>
+
+        {/* Delete confirmation dialog */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}
+               onClick={() => setShowDeleteConfirm(false)}>
+            <div className="border rounded-xl p-5 max-w-sm w-full mx-4"
+                 style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+                 onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Delete {fileName}?</h3>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>
+                This will create a commit that deletes this file. This action cannot be undone.
+              </p>
+              {saveError && <p className="text-xs mb-2" style={{ color: 'var(--error)' }}>{saveError}</p>}
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setShowDeleteConfirm(false)} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
+                <button onClick={handleDelete} disabled={deleting}
+                        className="text-xs px-3 py-1.5 rounded-md font-medium transition-colors"
+                        style={{ background: 'var(--error)', color: 'white' }}>
+                  {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Delete file'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- Directory listing ---
   return (
     <div>
       {currentPath && <Breadcrumbs parts={breadcrumbs} onNavigate={setCurrentPath} />}
-      <div className="border rounded-lg divide-y mt-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
+      <div className="flex justify-end mb-2 mt-1">
+        <button onClick={() => { setCreating(true); setNewFileCommitMsg('Create new file'); setSaveError(null); }}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-medium transition-colors hover:opacity-80"
+                style={{ background: 'rgba(0,122,255,0.1)', color: 'var(--accent)' }}>
+          <FilePlus className="w-3.5 h-3.5" /> New file
+        </button>
+      </div>
+      <div className="border rounded-lg divide-y" style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
         {currentPath && (
           <div className="px-4 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2 text-sm"
                onClick={() => { const p = currentPath.split('/'); p.pop(); setCurrentPath(p.join('/')); }}
@@ -234,7 +488,9 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({ ow
                onClick={() => setCurrentPath(item.path)}>
             {item.type === 'dir'
               ? <Folder className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--accent)' }} />
-              : <File className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />}
+              : isImageFile(item.name)
+                ? <ImageIcon className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--success)' }} />
+                : <File className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />}
             <span style={{ color: 'var(--text-primary)' }}>{item.name}</span>
           </div>
         ))}

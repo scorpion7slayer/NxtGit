@@ -13,6 +13,21 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.0',
+    date: 'March 2026',
+    changes: [
+      { type: 'feature', text: 'In-app file editor with commit & push' },
+      { type: 'feature', text: 'Image preview in file browser (PNG, JPG, GIF, SVG, WebP)' },
+      { type: 'feature', text: 'Markdown preview toggle in file viewer' },
+      { type: 'feature', text: 'Create new files directly from the app' },
+      { type: 'feature', text: 'Delete files with commit' },
+      { type: 'feature', text: 'GitHub Changelog with full content, images & videos in-app' },
+      { type: 'feature', text: 'Branch creation support' },
+      { type: 'improvement', text: 'Multi-platform builds: macOS, Windows (x64/x86/ARM), Linux' },
+      { type: 'improvement', text: 'Enhanced DOMPurify config for rich changelog content' },
+    ],
+  },
+  {
     version: '0.1.0',
     date: 'March 2026',
     changes: [
@@ -26,7 +41,6 @@ const CHANGELOG: ChangelogVersion[] = [
       { type: 'feature', text: 'GitHub Actions workflow runs viewer' },
       { type: 'feature', text: 'Global search for repositories and users' },
       { type: 'feature', text: 'User profile pages' },
-      { type: 'feature', text: 'GitHub Changelog feed integration' },
       { type: 'feature', text: 'Liquid Glass UI design on macOS' },
       { type: 'feature', text: 'Dark and light mode support' },
       { type: 'improvement', text: 'GitHub Copilot integration via device flow' },
@@ -167,7 +181,10 @@ const AppChangelog: React.FC = () => {
                 <div
                   className="changelog-content"
                   style={{ color: 'var(--text-primary)' }}
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedEntry.contentHtml, { ADD_TAGS: ['img'], ADD_ATTR: ['src', 'alt', 'loading'] }) }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedEntry.contentHtml, {
+                    ADD_TAGS: ['iframe', 'video', 'source', 'picture', 'figure', 'figcaption'],
+                    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'srcset', 'sizes', 'media', 'type', 'autoplay', 'controls', 'muted', 'loop', 'poster', 'width', 'height', 'loading', 'style'],
+                  }) }}
                 />
               </div>
             </div>

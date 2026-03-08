@@ -1,22 +1,45 @@
-# NxtGit 🚀
+# NxtGit
 
-AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI chat, and GitHub integration.
+AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI chat, and full GitHub integration.
 
 ![NxtGit](screenshot.png)
 
-## ✨ Features
+## Features
 
-- 💬 **AI Chat** — Full conversational chat with streaming, thinking blocks, file & repo attachments
-- 🧠 **Extended Thinking** — See the AI's reasoning process in real-time (Anthropic, DeepSeek, OpenAI o-series, Ollama)
-- 🤖 **8 AI Providers** — GitHub Copilot, OpenRouter, Anthropic, OpenAI, Ollama (local & cloud), Moonshot, Kilocode, MiniMax
-- 🔍 **Smart Code Review** — AI-powered code reviews with streaming markdown output
-- 🎨 **Liquid Glass UI** — Light/dark mode with transparency, blur effects, and CSS custom properties
-- 🔐 **GitHub OAuth** — Device flow authentication for GitHub + separate Copilot OAuth
-- 📁 **Repository Browser** — Browse repos, issues, PRs, and file trees without cloning
-- 💾 **Persistent Chat** — Conversations saved locally, window state remembered across sessions
-- 🏠 **Ollama Support** — Local models with configurable URL, or Ollama Cloud with API key
+- **AI Chat** — Full conversational chat with streaming, thinking blocks, file & repo attachments
+- **Extended Thinking** — See the AI's reasoning process in real-time (Anthropic, DeepSeek, OpenAI o-series, Ollama)
+- **8 AI Providers** — GitHub Copilot, OpenRouter, Anthropic, OpenAI, Ollama (local & cloud), Moonshot, Kilocode, MiniMax
+- **Smart Code Review** — AI-powered code reviews with streaming markdown output
+- **In-App File Editor** — Edit files, commit & push directly from the app (like github.com)
+- **Image Preview** — View images (PNG, JPG, GIF, SVG, WebP) inline in the file browser
+- **Markdown Preview** — Toggle between code and rendered markdown preview
+- **Commit & Push** — Create, edit, and delete files with commit messages — no terminal needed
+- **Branch Management** — Switch branches, view protection status, create new branches
+- **Repository Browser** — Browse repos, issues, PRs, commits, releases, contributors, and file trees
+- **GitHub Actions** — View workflow runs, jobs, and step details
+- **GitHub Changelog** — Read GitHub's changelog with full content, images, and videos in-app
+- **Global Search** — Search repositories and users across GitHub
+- **User Profiles** — View user profiles with repos, stats, and social links
+- **Liquid Glass UI** — Light/dark mode with transparency, blur effects, and CSS custom properties
+- **GitHub OAuth** — Device flow authentication for GitHub + separate Copilot OAuth
+- **Persistent Chat** — Conversations saved locally, window state remembered across sessions
+- **Ollama Support** — Local models with configurable URL, or Ollama Cloud with API key
 
-## 🛠️ Tech Stack
+## Downloads
+
+| Platform | Architecture | Format |
+| -------- | ------------ | ------ |
+| **macOS** | Apple Silicon (M1+) | `.dmg` |
+| **macOS** | Intel (x86_64) | `.dmg` |
+| **Windows** | x64 | `.msi` / `.exe` |
+| **Windows** | x86 (32-bit) | `.msi` / `.exe` |
+| **Windows** | ARM64 | `.exe` |
+| **Linux** | x64 | `.deb` / `.AppImage` |
+| **Linux** | ARM64 | `.deb` |
+
+Download the latest release from the [Releases page](https://github.com/scorpion7slayer/NxtGit/releases).
+
+## Tech Stack
 
 | Layer | Technology |
 | ----- | ---------- |
@@ -27,7 +50,7 @@ AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI 
 | **Markdown** | react-markdown + remark-gfm + react-syntax-highlighter |
 | **Design** | Liquid Glass (CSS custom properties, light/dark auto) |
 
-## 🤖 AI Providers
+## AI Providers
 
 | Provider | Thinking Support | Auth |
 | -------- | --------------- | ---- |
@@ -40,11 +63,11 @@ AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI 
 | **Kilocode** | — | API key |
 | **MiniMax** | — | API key |
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Windows 10+ / macOS 14+
+- Windows 10+ / macOS 14+ / Linux (Ubuntu 22.04+)
 - Node.js 18+
 - Rust toolchain (edition 2021, 1.70+)
 
@@ -73,41 +96,46 @@ npm run tauri-build  # Production build
 - GitHub Copilot uses a separate OAuth device flow
 - Ollama works locally without a key; add one for Ollama Cloud
 
-## 📝 Usage
+## Usage
 
 1. **Login** — Authenticate with GitHub via device flow
-2. **Chat** — Open AI Chat, pick a provider/model, start a conversation
-3. **Attach** — Attach files or entire repo trees (sends only file paths, not content)
-4. **Review** — Paste code in AI Review for streaming code analysis
-5. **Browse** — Explore repositories, issues, and pull requests
+2. **Browse** — Explore repositories, files, issues, and pull requests
+3. **Edit** — Click Edit on any file, modify it, and commit directly
+4. **Preview** — Toggle markdown preview, view images inline
+5. **Chat** — Open AI Chat, pick a provider/model, start a conversation
+6. **Review** — Paste code in AI Review for streaming code analysis
+7. **Search** — Find repositories and users with Global Search
 
-## 🏗️ Architecture
+## Architecture
 
 ```text
 NxtGit/
 ├── src/                        # React frontend
-│   ├── components/             # UI components (Chat, Dashboard, Settings, ...)
+│   ├── components/             # UI components (Chat, Dashboard, RepoDetail, ...)
 │   ├── stores/                 # Zustand stores (auth, persisted via Tauri Store)
 │   └── lib/
 │       ├── ai.ts               # AI providers, streaming, thinking, Copilot OAuth
-│       └── github.ts           # GitHub API client (repos, PRs, issues, trees)
+│       └── github.ts           # GitHub API client (repos, PRs, issues, file CRUD)
 ├── src-tauri/                  # Rust backend
 │   ├── src/lib.rs              # Plugin registration (http, shell, store, window-state)
 │   ├── tauri.conf.json         # Window config, CSP, bundle targets
 │   └── capabilities/           # Permission allowlists (HTTP domains, plugins)
+├── .github/workflows/          # CI/CD
+│   ├── release.yml             # Multi-platform release (macOS/Windows/Linux)
+│   └── build.yml               # Reusable build workflow
 └── package.json
 ```
 
-## 🔒 Security
+## Security
 
 - CSP restricted to whitelisted API domains
 - HTTP permissions via Tauri capability allowlists
 - OAuth `verification_uri` validated before opening
 - Ollama URL validated (http/https only) to prevent SSRF
 - Tokens stored via Tauri Store (OS-level secure storage), not localStorage
-- No `eval`, no `dangerouslySetInnerHTML`
+- HTML content sanitized with DOMPurify
 
-## 🤝 Contributing
+## Contributing
 
 Built for [Flavortown](https://flavortown.hackclub.com/) — a Hack Club program for high schoolers.
 
@@ -117,14 +145,10 @@ Built for [Flavortown](https://flavortown.hackclub.com/) — a Hack Club program
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 MIT License — see [LICENSE](LICENSE)
 
-## 🙏 Acknowledgments
-
-- [Tauri](https://tauri.app/) — Desktop framework
-
 ---
 
-Built with ❤️ by @scorpion7slayer
+Built with love by @scorpion7slayer
