@@ -74,6 +74,8 @@ jobs:
 
             # if you use an App Store Connect API key, write it to disk first
             - name: Prepare Apple API key (optional)
+              if: contains(inputs.platform, 'macos')
+              shell: bash
               run: |
                   if [ -n "${{ secrets.APPLE_API_KEY_CONTENT }}" ]; then
                     mkdir -p ~/.appstoreconnect/private_keys

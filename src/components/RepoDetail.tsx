@@ -51,6 +51,7 @@ import {
     MoreHorizontal,
 } from "lucide-react";
 import hljs from "highlight.js";
+import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -942,8 +943,14 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         };
 
         (async () => {
+            // Sanitize HTML content with DOMPurify to prevent XSS
+            const sanitized = DOMPurify.sanitize(fileContent, {
+                WHOLE_DOCUMENT: true,
+                ADD_TAGS: ["style", "link"],
+                ADD_ATTR: ["rel", "href", "src", "alt", "class", "id", "name"],
+            });
             const parser = new DOMParser();
-            const doc = parser.parseFromString(fileContent, "text/html");
+            const doc = parser.parseFromString(sanitized, "text/html");
 
             // Inline linked stylesheets: <link rel="stylesheet" href="...">
             const linkEls = Array.from(
@@ -962,30 +969,8 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                     );
                     if (cancelled) return;
                     const style = doc.createElement("style");
-                    style.textContent = `/* ${href} */\n${css}`;
+                    style.textContent = css;
                     link.replaceWith(style);
-                } catch {
-                    /* skip if not found */
-                }
-            }
-
-            // Inline linked scripts: <script src="..."></script>
-            const scriptEls = Array.from(doc.querySelectorAll("script[src]"));
-            for (const script of scriptEls) {
-                const src = script.getAttribute("src")!;
-                const repoPath = resolvePath(src);
-                if (!repoPath) continue;
-                try {
-                    const js = await fetchFileContent(
-                        owner,
-                        name,
-                        repoPath,
-                        branch,
-                    );
-                    if (cancelled) return;
-                    const inlineScript = doc.createElement("script");
-                    inlineScript.textContent = `/* ${src} */\n${js}`;
-                    script.replaceWith(inlineScript);
                 } catch {
                     /* skip if not found */
                 }
@@ -1000,11 +985,6 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                     img.setAttribute("src", `${rawBase}${src}`);
                 }
             }
-
-            // Inject anchor fix: intercept hash links to scroll instead of navigate
-            const anchorScript = doc.createElement("script");
-            anchorScript.textContent = `document.addEventListener('click',function(e){var a=e.target.closest('a');if(!a)return;var href=a.getAttribute('href');if(href&&href.startsWith('#')){e.preventDefault();var el=document.querySelector(href)||document.querySelector('[name="'+href.slice(1)+'"]');if(el)el.scrollIntoView({behavior:'smooth'});}});`;
-            (doc.body || doc.documentElement).appendChild(anchorScript);
 
             if (!cancelled) setResolvedHtml(doc.documentElement.outerHTML);
         })();
