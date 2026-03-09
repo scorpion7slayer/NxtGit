@@ -8,6 +8,13 @@ interface FlagIconProps {
     title: string;
 }
 
+const FLAG_EMOJI: Record<FlagCode, string> = {
+    us: "🇺🇸",
+    eu: "🇪🇺",
+    au: "🇦🇺",
+    jp: "🇯🇵",
+};
+
 const STAR_POSITIONS = [
     [32, 9],
     [38.5, 11],
@@ -24,6 +31,30 @@ const STAR_POSITIONS = [
 ] as const;
 
 const FlagIcon: React.FC<FlagIconProps> = ({ code, className, title }) => {
+    const useNativeEmoji =
+        typeof document !== "undefined" &&
+        document.documentElement.classList.contains("platform-macos");
+
+    if (useNativeEmoji) {
+        return (
+            <span
+                className={className}
+                aria-label={title}
+                role="img"
+                title={title}
+                style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.2rem",
+                    lineHeight: 1,
+                }}
+            >
+                {FLAG_EMOJI[code]}
+            </span>
+        );
+    }
+
     switch (code) {
         case "us":
             return (

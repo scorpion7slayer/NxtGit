@@ -303,7 +303,7 @@ const GitHubStatus: React.FC = () => {
                         <FlagIcon
                             code={r.flagCode}
                             title={r.region}
-                            className="w-7 h-5 rounded-sm shadow-sm flex-shrink-0"
+                            className="w-7 h-5 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>

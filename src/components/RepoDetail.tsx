@@ -945,6 +945,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
     // Markdown/HTML preview & delete
     const [showPreview, setShowPreview] = useState(false);
     const [resolvedHtml, setResolvedHtml] = useState<string | null>(null);
+    const [resolvedHtmlUrl, setResolvedHtmlUrl] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -1124,6 +1125,32 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
             cancelled = true;
         };
     }, [showPreview, isHtml, fileContent, owner, name, currentPath, branch]);
+
+    useEffect(() => {
+        if (!resolvedHtml) {
+            setResolvedHtmlUrl((currentUrl) => {
+                if (currentUrl) {
+                    URL.revokeObjectURL(currentUrl);
+                }
+                return null;
+            });
+            return;
+        }
+
+        const blob = new Blob([resolvedHtml], { type: "text/html;charset=utf-8" });
+        const nextUrl = URL.createObjectURL(blob);
+
+        setResolvedHtmlUrl((currentUrl) => {
+            if (currentUrl) {
+                URL.revokeObjectURL(currentUrl);
+            }
+            return nextUrl;
+        });
+
+        return () => {
+            URL.revokeObjectURL(nextUrl);
+        };
+    }, [resolvedHtml]);
 
     const handleSave = async () => {
         if (!commitMsg.trim()) return;
@@ -1484,10 +1511,10 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                     {!isImage &&
                         showPreview &&
                         isHtml &&
-                        (resolvedHtml ? (
+                        (resolvedHtmlUrl ? (
                             <div style={{ background: "var(--bg-secondary)" }}>
                                 <iframe
-                                    srcDoc={resolvedHtml}
+                                    src={resolvedHtmlUrl}
                                     sandbox="allow-scripts"
                                     title={`Preview ${fileName}`}
                                     style={{
