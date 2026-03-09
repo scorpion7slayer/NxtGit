@@ -4,6 +4,7 @@
 #[macro_use]
 extern crate objc;
 
+#[cfg(target_os = "macos")]
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -16,10 +17,10 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .setup(|app| {
+        .setup(|_app| {
             #[cfg(target_os = "macos")]
             {
-                let window = app.get_webview_window("main").unwrap();
+                let window = _app.get_webview_window("main").unwrap();
                 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
                 apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None)
                     .expect("Failed to apply vibrancy");
