@@ -24,11 +24,15 @@ import WindowDragRegion from "./components/WindowDragRegion";
 import { useAuthStore } from "./stores/authStore";
 
 function App() {
-    const { isAuthenticated, loadAuth } = useAuthStore();
+    const { authLoaded, isAuthenticated, loadAuth } = useAuthStore();
 
     useEffect(() => {
         loadAuth();
     }, [loadAuth]);
+
+    if (!authLoaded) {
+        return <div className="h-screen" style={{ background: "var(--bg-primary)" }} />;
+    }
 
     if (!isAuthenticated) {
         return (

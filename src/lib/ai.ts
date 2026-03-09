@@ -1,6 +1,7 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { useAuthStore } from "../stores/authStore";
+import { APP_USER_AGENT } from "./appMeta";
 
 const settingsStore = new LazyStore("settings.json");
 
@@ -386,7 +387,7 @@ export async function fetchProviderModels(
     try {
         const headers: Record<string, string> = {
             Accept: "application/json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         };
 
         if (providerId === "anthropic") {
@@ -526,7 +527,7 @@ function buildHeaders(
 ): Record<string, string> {
     const base: Record<string, string> = {
         "Content-Type": "application/json",
-        "User-Agent": "NxtGit/1.0.0",
+        "User-Agent": APP_USER_AGENT,
     };
 
     if (providerId === "anthropic") {

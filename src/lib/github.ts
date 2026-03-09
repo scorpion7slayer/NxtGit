@@ -1,5 +1,6 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { useAuthStore } from "../stores/authStore";
+import { APP_USER_AGENT } from "./appMeta";
 
 const API = "https://api.github.com";
 
@@ -10,7 +11,7 @@ async function ghFetch<T>(path: string): Promise<T> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
 
@@ -28,7 +29,7 @@ async function ghFetchRaw(path: string): Promise<string> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github.raw+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
 
@@ -256,7 +257,7 @@ export async function fetchSubscription(): Promise<GitHubSubscription> {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         Accept: "application/json",
-                        "User-Agent": "NxtGit/1.0.0",
+                        "User-Agent": APP_USER_AGENT,
                     },
                 },
             );
@@ -402,7 +403,7 @@ async function ghPost<T>(path: string, body: Record<string, unknown>): Promise<T
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
             "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -421,7 +422,7 @@ async function ghPatch<T>(path: string, body: Record<string, unknown>): Promise<
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
             "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -440,7 +441,7 @@ async function ghPut<T>(path: string, body: Record<string, unknown> = {}): Promi
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
             "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -459,7 +460,7 @@ async function ghDelete<T>(path: string, body: Record<string, unknown>): Promise
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
             "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -783,7 +784,7 @@ export async function fetchUserRepos(
 export async function fetchGitHubChangelog(): Promise<GitHubChangelogEntry[]> {
     const response = await fetch("https://github.blog/changelog/feed/", {
         method: "GET",
-        headers: { "User-Agent": "NxtGit/1.0.0", Accept: "application/rss+xml" },
+        headers: { "User-Agent": APP_USER_AGENT, Accept: "application/rss+xml" },
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const xml = await response.text();
@@ -945,7 +946,7 @@ export async function isRepoStarred(owner: string, name: string): Promise<boolea
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
     return response.status === 204;
@@ -958,7 +959,7 @@ export async function starRepo(owner: string, name: string): Promise<void> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
             "Content-Length": "0",
         },
     });
@@ -971,7 +972,7 @@ export async function unstarRepo(owner: string, name: string): Promise<void> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
 }
@@ -983,7 +984,7 @@ export async function isRepoWatched(owner: string, name: string): Promise<boolea
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
     return response.ok;
@@ -1000,7 +1001,7 @@ export async function unwatchRepo(owner: string, name: string): Promise<void> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
 }
@@ -1197,7 +1198,7 @@ export async function removeCollaborator(
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
     if (!response.ok) {
@@ -1250,7 +1251,7 @@ export async function removeDeployKey(
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
     if (!response.ok) {
@@ -1304,7 +1305,7 @@ export async function deleteWebhook(
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
     if (!response.ok) {
@@ -1360,7 +1361,7 @@ export async function deleteRepo(
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
     if (!response.ok) {
@@ -1408,7 +1409,7 @@ export async function markNotificationRead(threadId: string): Promise<void> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
 }
@@ -1420,7 +1421,7 @@ export async function markNotificationDone(threadId: string): Promise<void> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
         },
     });
 }
@@ -1432,7 +1433,7 @@ export async function markAllNotificationsRead(): Promise<void> {
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github+json",
-            "User-Agent": "NxtGit/1.0.0",
+            "User-Agent": APP_USER_AGENT,
             "Content-Type": "application/json",
         },
         body: JSON.stringify({}),

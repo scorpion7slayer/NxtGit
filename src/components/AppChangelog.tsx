@@ -13,6 +13,15 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.2',
+    date: 'March 2026',
+    changes: [
+      { type: 'fix', text: 'Fixed GitHub Changelog videos and embeds in the app WebView' },
+      { type: 'fix', text: 'Prevented the login screen from flashing before restoring a saved session on startup' },
+      { type: 'improvement', text: 'Aligned app version metadata across updater, settings, and outbound API requests' },
+    ],
+  },
+  {
     version: '1.0.1',
     date: 'March 2026',
     changes: [

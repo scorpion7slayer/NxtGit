@@ -41,12 +41,11 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 ## Latest Release Notes
 
-### v1.0.1
+### v1.0.2
 
-- Fixed macOS window dragging
-- Added in-app update notification and install flow
-- Improved updater error feedback in the app
-- Limited Liquid Glass styling to macOS Tahoe (26+) while keeping standard macOS drag/title bar behavior
+- Fixed GitHub Changelog videos and embeds in the app
+- Prevented the login screen from flashing before restoring a saved session
+- Aligned app version metadata across updater, settings, and API requests
 
 ## Tech Stack
 

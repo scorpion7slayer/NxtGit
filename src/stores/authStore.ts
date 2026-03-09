@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
 interface AuthState {
+    authLoaded: boolean;
     isAuthenticated: boolean;
     token: string | null;
     copilotGithubToken: string | null;
@@ -24,6 +25,7 @@ interface GitHubUser {
 const store = new LazyStore("auth.json");
 
 export const useAuthStore = create<AuthState>((set) => ({
+    authLoaded: false,
     isAuthenticated: false,
     token: null,
     copilotGithubToken: null,
@@ -33,7 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         await store.set("token", token);
         await store.set("user", user);
         await store.save();
-        set({ isAuthenticated: true, token, user });
+        set({ authLoaded: true, isAuthenticated: true, token, user });
     },
 
     setCopilotToken: async (token) => {
@@ -54,6 +56,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         await store.delete("copilotGithubToken");
         await store.save();
         set({
+            authLoaded: true,
             isAuthenticated: false,
             token: null,
             user: null,
@@ -69,14 +72,18 @@ export const useAuthStore = create<AuthState>((set) => ({
                 await store.get<string>("copilotGithubToken");
             if (token && user) {
                 set({
+                    authLoaded: true,
                     isAuthenticated: true,
                     token,
                     user,
                     copilotGithubToken: copilotGithubToken || null,
                 });
+                return;
             }
         } catch {
             // Store not yet initialized, ignore
         }
+
+        set({ authLoaded: true });
     },
 }));
