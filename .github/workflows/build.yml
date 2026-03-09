@@ -100,7 +100,33 @@ jobs:
                   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
                   KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
               run: |
-                  echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+                  if [ -z "$APPLE_CERTIFICATE" ]; then
+                    echo "::error::Missing APPLE_CERTIFICATE secret."
+                    exit 1
+                  fi
+
+                  if [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
+                    echo "::error::Missing APPLE_CERTIFICATE_PASSWORD secret."
+                    exit 1
+                  fi
+
+                  if [ -z "$KEYCHAIN_PASSWORD" ]; then
+                    echo "::error::Missing KEYCHAIN_PASSWORD secret."
+                    exit 1
+                  fi
+
+                  if ! printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12 2>/dev/null; then
+                    if ! printf '%s' "$APPLE_CERTIFICATE" | base64 -D > certificate.p12 2>/dev/null; then
+                      echo "::error::APPLE_CERTIFICATE is not valid base64 for a .p12 certificate."
+                      exit 1
+                    fi
+                  fi
+
+                  if [ ! -s certificate.p12 ]; then
+                    echo "::error::Decoded certificate.p12 is empty."
+                    exit 1
+                  fi
+
                   security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
                   security default-keychain -s build.keychain
                   security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
@@ -136,7 +162,7 @@ jobs:
               with:
                   releaseId: ${{ inputs.release-id }}
                   tagName: v${{ steps.get-version.outputs.version }}
-                  uploadUpdaterJson: true
+                  includeUpdaterJson: true
                   args: ${{ inputs.build-args }}
 
             - name: Build with Tauri
@@ -150,7 +176,7 @@ jobs:
               with:
                   releaseId: ${{ inputs.release-id }}
                   tagName: v${{ steps.get-version.outputs.version }}
-                  uploadUpdaterJson: true
+                  includeUpdaterJson: true
                   args: ${{ inputs.build-args }}
 
             # Fallback: if macOS build failed (notarization timeout), rebuild signed-only
@@ -168,7 +194,7 @@ jobs:
               with:
                   releaseId: ${{ inputs.release-id }}
                   tagName: v${{ steps.get-version.outputs.version }}
-                  uploadUpdaterJson: true
+                  includeUpdaterJson: true
                   args: ${{ inputs.build-args }}
 
             - name: Summarize macOS signed-only fallback
