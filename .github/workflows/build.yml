@@ -68,6 +68,24 @@ jobs:
             - name: Install node dependencies
               run: npm ci
 
+            - name: Validate updater public key
+              if: inputs.release-id != ''
+              env:
+                  TAURI_SIGNING_PUBLIC_KEY: ${{ secrets.TAURI_SIGNING_PUBLIC_KEY }}
+              shell: bash
+              run: |
+                  if [ -z "$TAURI_SIGNING_PUBLIC_KEY" ]; then
+                    echo "::error::Missing TAURI_SIGNING_PUBLIC_KEY secret."
+                    exit 1
+                  fi
+
+            - name: Inject updater public key
+              if: inputs.release-id != ''
+              env:
+                  TAURI_SIGNING_PUBLIC_KEY: ${{ secrets.TAURI_SIGNING_PUBLIC_KEY }}
+              run: |
+                  node -e "const fs=require('fs'); const path='src-tauri/tauri.conf.json'; const config=JSON.parse(fs.readFileSync(path, 'utf8')); config.plugins ??= {}; config.plugins.updater ??= {}; config.plugins.updater.pubkey = process.env.TAURI_SIGNING_PUBLIC_KEY; fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');"
+
             - name: Build frontend
               run: npm run build
 
@@ -98,24 +116,71 @@ jobs:
                   echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
                   echo "Certificate imported: $CERT_ID"
 
-            - name: Build with Tauri
+            - name: Build with Tauri (macOS notarized)
+              id: build-notarized
+              if: contains(inputs.platform, 'macos')
+              continue-on-error: true
+              timeout-minutes: 15
               uses: tauri-apps/tauri-action@v0
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-                  # frontend env vars
                   VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
-
-                  # macOS code signing & notarization
                   APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
                   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
                   APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
                   APPLE_ID: ${{ secrets.APPLE_ID }}
                   APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
                   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
               with:
                   releaseId: ${{ inputs.release-id }}
+                  tagName: v${{ steps.get-version.outputs.version }}
+                  uploadUpdaterJson: true
                   args: ${{ inputs.build-args }}
+
+            - name: Build with Tauri
+              if: ${{ !contains(inputs.platform, 'macos') }}
+              uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+              with:
+                  releaseId: ${{ inputs.release-id }}
+                  tagName: v${{ steps.get-version.outputs.version }}
+                  uploadUpdaterJson: true
+                  args: ${{ inputs.build-args }}
+
+            # Fallback: if macOS build failed (notarization timeout), rebuild signed-only
+            - name: Build with Tauri (signed only, no notarization)
+              if: steps.build-notarized.outcome == 'failure' && contains(inputs.platform, 'macos')
+              uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
+                  APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+                  APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+                  APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+              with:
+                  releaseId: ${{ inputs.release-id }}
+                  tagName: v${{ steps.get-version.outputs.version }}
+                  uploadUpdaterJson: true
+                  args: ${{ inputs.build-args }}
+
+            - name: Summarize macOS signed-only fallback
+              if: steps.build-notarized.outcome == 'failure' && contains(inputs.platform, 'macos')
+              shell: bash
+              run: |
+                  {
+                    echo "### macOS notarization fallback"
+                    echo ""
+                    echo "The notarized macOS build did not finish within 15 minutes, so the uploaded artifact is Developer ID signed but may not be notarized yet."
+                    echo "If Gatekeeper blocks launch, users can allow NxtGit from System Settings > Privacy & Security."
+                  } >> "$GITHUB_STEP_SUMMARY"
 
             - name: Upload artifacts (macOS)
               if: inputs.upload-artifacts && contains(inputs.platform, 'macos')

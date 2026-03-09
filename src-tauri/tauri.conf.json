@@ -35,6 +35,7 @@
     "bundle": {
         "active": true,
         "targets": "all",
+        "createUpdaterArtifacts": true,
         "category": "DeveloperTool",
         "copyright": "MIT",
         "macOS": {
@@ -49,5 +50,12 @@
             "icons/icon.ico"
         ]
     },
-    "plugins": {}
+    "plugins": {
+        "updater": {
+            "endpoints": [
+                "https://github.com/scorpion7slayer/NxtGit/releases/latest/download/latest.json"
+            ],
+            "pubkey": "__TAURI_SIGNING_PUBLIC_KEY__"
+        }
+    }
 }

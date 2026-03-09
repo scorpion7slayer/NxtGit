@@ -89,3 +89,60 @@ jobs:
       upload-artifacts: false
       release-id: ${{ needs.create-release.outputs.release-id }}
     secrets: inherit
+
+  verify-updater-assets:
+    permissions:
+      contents: read
+    needs:
+      - create-release
+      - publish-tauri
+    if: needs.publish-tauri.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify updater assets on draft release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releaseId = Number('${{ needs.create-release.outputs.release-id }}')
+            const { data } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId
+            })
+
+            const assetNames = data.assets.map((asset) => asset.name)
+            const hasLatestJson = assetNames.includes('latest.json')
+            const signatureCount = assetNames.filter((name) => name.endsWith('.sig')).length
+
+            core.info(`Release assets: ${assetNames.join(', ')}`)
+
+            if (!hasLatestJson) {
+              core.setFailed('Missing latest.json on the draft release. The updater will not work.')
+              return
+            }
+
+            if (signatureCount === 0) {
+              core.setFailed('No updater signature assets were uploaded. The updater will not work.')
+            }
+
+  publish-release:
+    permissions:
+      contents: write
+    needs:
+      - create-release
+      - publish-tauri
+      - verify-updater-assets
+    if: needs.publish-tauri.result == 'success' && needs.verify-updater-assets.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish GitHub release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: Number('${{ needs.create-release.outputs.release-id }}'),
+              draft: false,
+              prerelease: false
+            })

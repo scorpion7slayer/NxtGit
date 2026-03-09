@@ -235,6 +235,8 @@ html.platform-macos .layout-main {
     background: rgba(251, 251, 253, 0.7) !important;
     backdrop-filter: blur(40px) saturate(120%);
     -webkit-backdrop-filter: blur(40px) saturate(120%);
+    padding-top: 38px;
+    box-sizing: border-box;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -364,8 +366,47 @@ html.platform-macos .input-glass:focus {
 
 html.platform-macos .sidebar-header {
     padding-top: 42px;
-    -webkit-app-region: drag;
-    app-region: drag;
+}
+
+/* Universal top drag region — covers the full title bar area on macOS */
+.macos-drag-bar {
+    display: none;
+}
+
+html.platform-macos .macos-drag-bar {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 38px;
+    z-index: 50;
+    pointer-events: auto;
+    user-select: none;
+}
+
+.update-banner {
+    position: fixed;
+    top: 52px;
+    right: 20px;
+    width: min(380px, calc(100vw - 40px));
+    padding: 14px;
+    z-index: 60;
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
+@media (prefers-color-scheme: dark) {
+    .update-banner {
+        background: var(--bg-secondary);
+    }
+}
+
+/* Allow interactive elements inside the drag bar area to be clickable */
+html.platform-macos .macos-drag-bar-nodrag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+    pointer-events: auto;
 }
 
 /* --- Dividers --- */
@@ -463,21 +504,6 @@ html.platform-macos .login-card {
     }
 }
 
-/* --- Login drag region --- */
-.login-drag-region {
-    display: none;
-}
-
-html.platform-macos .login-drag-region {
-    display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 38px;
-    -webkit-app-region: drag;
-    z-index: 100;
-}
 
 /* GitHub changelog article content */
 .changelog-content h1,

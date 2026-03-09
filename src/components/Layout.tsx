@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import logo from "../assets/logo.svg";
+import UpdateBanner from "./UpdateBanner";
+import WindowDragRegion from "./WindowDragRegion";
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -30,6 +32,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             className="h-screen flex overflow-hidden layout-root"
             style={{ background: "var(--bg-primary)" }}
         >
+            <WindowDragRegion className="macos-drag-bar" />
             <aside
                 className="w-56 flex flex-col border-r layout-sidebar"
                 style={{
@@ -38,9 +41,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 }}
             >
                 {/* App header */}
-                <div
+                <WindowDragRegion
                     className="px-4 pb-4 border-b sidebar-header"
-                    data-tauri-drag-region
                     style={{ borderColor: "var(--border)" }}
                 >
                     <div className="flex items-center gap-2.5">
@@ -56,7 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             NxtGit
                         </span>
                     </div>
-                </div>
+                </WindowDragRegion>
 
                 {/* Navigation */}
                 <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
@@ -145,6 +147,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     className="h-full overflow-y-auto overflow-x-hidden layout-main"
                     style={{ background: "var(--bg-primary)" }}
                 >
+                    <UpdateBanner />
                     {children}
                 </div>
             </main>

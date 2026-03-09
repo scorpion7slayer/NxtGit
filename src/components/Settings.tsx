@@ -6,6 +6,8 @@ import {
     CreditCard,
     Shield,
     Copy,
+    Download,
+    RefreshCw,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import {
@@ -18,14 +20,26 @@ import {
 } from "../lib/ai";
 import { open } from "@tauri-apps/plugin-shell";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { fetchSubscription, type GitHubSubscription } from "../lib/github";
+import {
+    fetchSubscription,
+    type GitHubSubscription,
+} from "../lib/github";
 import { LazyStore } from "@tauri-apps/plugin-store";
+import { getVersion } from "@tauri-apps/api/app";
+import { relaunch } from "@tauri-apps/plugin-process";
+import {
+    formatUpdaterError,
+    getAvailableAppUpdate,
+    installAppUpdate,
+    type AvailableAppUpdate,
+} from "../lib/updater";
 
 const settingsStore = new LazyStore("settings.json");
 
 const Settings: React.FC = () => {
     const { user, copilotGithubToken, clearCopilotToken } = useAuthStore();
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+    const [appVersion, setAppVersion] = useState("1.0.0");
     const [ollamaURL, setOllamaURL] = useState("http://localhost:11434");
     const [notifications, setNotifications] = useState(true);
     const [autoReview, setAutoReview] = useState(false);
@@ -34,6 +48,90 @@ const Settings: React.FC = () => {
         null,
     );
     const [subLoading, setSubLoading] = useState(true);
+
+    // Update state
+    const [updateChecking, setUpdateChecking] = useState(false);
+    const [updateAvailable, setUpdateAvailable] =
+        useState<AvailableAppUpdate | null>(null);
+    const [updateDownloading, setUpdateDownloading] = useState(false);
+    const [updateProgress, setUpdateProgress] = useState("");
+    const [updateError, setUpdateError] = useState("");
+
+    const checkForUpdate = async () => {
+        setUpdateChecking(true);
+        setUpdateError("");
+        setUpdateProgress("");
+        setUpdateAvailable(null);
+        try {
+            const update = await getAvailableAppUpdate();
+            if (update) {
+                setUpdateAvailable(update);
+            } else {
+                setUpdateProgress("You're on the latest version.");
+                setTimeout(() => setUpdateProgress(""), 3000);
+            }
+        } catch (err) {
+            setUpdateError(formatUpdaterError(err));
+        } finally {
+            setUpdateChecking(false);
+        }
+    };
+
+    const installUpdate = async () => {
+        setUpdateDownloading(true);
+        setUpdateError("");
+        setUpdateProgress("");
+        try {
+            const update = await getAvailableAppUpdate();
+            if (update) {
+                let downloadedBytes = 0;
+                let totalBytes = 0;
+
+                setUpdateAvailable(update);
+                setUpdateProgress("Downloading update...");
+                await installAppUpdate(update.update, (event) => {
+                    if (event.event === "Started") {
+                        totalBytes = event.data.contentLength ?? 0;
+                        downloadedBytes = 0;
+                        if (totalBytes > 0) {
+                            setUpdateProgress(
+                                `Downloading 0% (0.0 / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)...`,
+                            );
+                        }
+                    } else if (event.event === "Progress") {
+                        downloadedBytes += event.data.chunkLength;
+                        if (totalBytes > 0) {
+                            const percent = Math.min(
+                                100,
+                                Math.round(
+                                    (downloadedBytes / totalBytes) * 100,
+                                ),
+                            );
+                            setUpdateProgress(
+                                `Downloading ${percent}% (${(downloadedBytes / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)...`,
+                            );
+                        } else {
+                            setUpdateProgress(
+                                `Downloading ${(downloadedBytes / 1024 / 1024).toFixed(1)} MB...`,
+                            );
+                        }
+                    } else if (event.event === "Finished") {
+                        setUpdateProgress("Installing...");
+                    }
+                });
+                setUpdateProgress("Update installed. Restarting...");
+                await relaunch();
+            } else {
+                setUpdateAvailable(null);
+                setUpdateProgress("You're on the latest version.");
+                setTimeout(() => setUpdateProgress(""), 3000);
+            }
+        } catch (err) {
+            setUpdateError(formatUpdaterError(err));
+        } finally {
+            setUpdateDownloading(false);
+        }
+    };
 
     // Copilot device flow state
     const [copilotConnecting, setCopilotConnecting] = useState(false);
@@ -51,13 +149,11 @@ const Settings: React.FC = () => {
             })
             .catch(() => {});
 
-        getOllamaBaseURL()
-            .then(setOllamaURL)
-            .catch(() => {});
+        getOllamaBaseURL().then(setOllamaURL).catch(() => {});
 
-        fetchSubscription()
-            .then(setSubscription)
-            .catch(() => {})
+        getVersion().then(setAppVersion).catch(() => {});
+
+        fetchSubscription().then(setSubscription).catch(() => {})
             .finally(() => setSubLoading(false));
     }, []);
 
@@ -544,6 +640,104 @@ const Settings: React.FC = () => {
                     </div>
                 </Section>
 
+                {/* Updates */}
+                <Section title="Updates">
+                    <div className="space-y-3">
+                        <div
+                            className="flex items-center justify-between p-3 rounded-lg"
+                            style={{ background: "var(--bg-tertiary)" }}
+                        >
+                            <div className="flex-1 min-w-0">
+                                <p
+                                    className="text-sm"
+                                    style={{
+                                        color: "var(--text-primary)",
+                                    }}
+                                >
+                                    Current version: <strong>{appVersion}</strong>
+                                </p>
+                                {updateAvailable && (
+                                    <p
+                                        className="text-xs mt-1"
+                                        style={{ color: "var(--success)" }}
+                                    >
+                                        v{updateAvailable.version} available
+                                    </p>
+                                )}
+                                {updateProgress && (
+                                    <p
+                                        className="text-xs mt-1"
+                                        style={{
+                                            color: "var(--text-tertiary)",
+                                        }}
+                                    >
+                                        {updateProgress}
+                                    </p>
+                                )}
+                                {updateError && (
+                                    <p
+                                        className="text-xs mt-1"
+                                        style={{ color: "var(--error)" }}
+                                    >
+                                        {updateError}
+                                    </p>
+                                )}
+                                {updateAvailable?.body && (
+                                    <p
+                                        className="text-xs mt-2 whitespace-pre-wrap"
+                                        style={{
+                                            color: "var(--text-tertiary)",
+                                        }}
+                                    >
+                                        {updateAvailable.body}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 ml-3">
+                                {updateAvailable ? (
+                                    <button
+                                        onClick={installUpdate}
+                                        disabled={updateDownloading}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                        style={{
+                                            background: "var(--accent)",
+                                            color: "#fff",
+                                            opacity: updateDownloading ? 0.6 : 1,
+                                        }}
+                                    >
+                                        {updateDownloading ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                            <Download className="w-3.5 h-3.5" />
+                                        )}
+                                        {updateDownloading
+                                            ? "Installing..."
+                                            : "Install update"}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={checkForUpdate}
+                                        disabled={updateChecking}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
+                                        style={{
+                                            borderColor: "var(--border)",
+                                            color: "var(--text-secondary)",
+                                            opacity: updateChecking ? 0.6 : 1,
+                                        }}
+                                    >
+                                        {updateChecking ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                            <RefreshCw className="w-3.5 h-3.5" />
+                                        )}
+                                        Check for updates
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </Section>
+
                 {/* Data */}
                 <Section title="Data">
                     <div className="space-y-2">
@@ -575,7 +769,7 @@ const Settings: React.FC = () => {
                     className="text-xs text-center flex justify-center items-center space-x-2"
                     style={{ color: "var(--text-tertiary)" }}
                 >
-                    <span>NxtGit v1.0.0</span>
+                    <span>NxtGit v{appVersion}</span>
                     <span>
                         ©{" "}
                         <a

@@ -20,6 +20,7 @@ import CommitDetail from "./components/CommitDetail";
 import WorkflowRunDetail from "./components/WorkflowRunDetail";
 import Notifications from "./components/Notifications";
 import CodeWiki from "./components/CodeWiki";
+import WindowDragRegion from "./components/WindowDragRegion";
 import { useAuthStore } from "./stores/authStore";
 
 function App() {
@@ -30,7 +31,12 @@ function App() {
     }, [loadAuth]);
 
     if (!isAuthenticated) {
-        return <Login />;
+        return (
+            <>
+                <WindowDragRegion className="macos-drag-bar" />
+                <Login />
+            </>
+        );
     }
 
     return (
