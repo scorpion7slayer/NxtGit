@@ -29,7 +29,8 @@
                 { "url": "https://eu.githubstatus.com/**" },
                 { "url": "https://au.githubstatus.com/**" },
                 { "url": "https://jp.githubstatus.com/**" },
-                { "url": "https://github.blog/**" }
+                { "url": "https://github.blog/**" },
+                { "url": "https://codewiki.google/**" }
             ]
         }
     ]

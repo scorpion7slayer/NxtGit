@@ -28,6 +28,7 @@
     "dompurify": "^3.3.2",
     "highlight.js": "^11.9.0",
     "lucide-react": "^0.294.0",
+    "mermaid": "^11.12.3",
     "octokit": "^3.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

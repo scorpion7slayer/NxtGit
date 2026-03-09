@@ -19,6 +19,7 @@ import AppChangelog from "./components/AppChangelog";
 import CommitDetail from "./components/CommitDetail";
 import WorkflowRunDetail from "./components/WorkflowRunDetail";
 import Notifications from "./components/Notifications";
+import CodeWiki from "./components/CodeWiki";
 import { useAuthStore } from "./stores/authStore";
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/repos" element={<Repositories />} />
                 <Route path="/repos/:owner/:name" element={<RepoDetail />} />
+                <Route path="/wiki/:owner/:name" element={<CodeWiki />} />
                 <Route path="/issues" element={<Issues />} />
                 <Route
                     path="/issue/:owner/:name/:number"

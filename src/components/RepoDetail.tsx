@@ -49,6 +49,7 @@ import {
     ToggleLeft,
     ToggleRight,
     MoreHorizontal,
+    Sparkles,
 } from "lucide-react";
 import hljs from "highlight.js";
 import DOMPurify from "dompurify";
@@ -532,6 +533,18 @@ const RepoDetail: React.FC = () => {
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                        onClick={() => navigate(`/wiki/${owner}/${name}`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
+                        style={{
+                            borderColor: "var(--accent)",
+                            background: "rgba(0,122,255,0.08)",
+                            color: "var(--accent)",
+                        }}
+                    >
+                        <Sparkles className="w-3 h-3" />
+                        Code Wiki
+                    </button>
                     <button
                         onClick={toggleWatch}
                         disabled={watchLoading}
