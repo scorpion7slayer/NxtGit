@@ -1,6 +1,6 @@
 # NxtGit
 
-AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI chat, and full GitHub integration.
+AI-native Git client built with Tauri v2, full GitHub integration, multi-provider AI chat, and an in-app updater.
 
 ![NxtGit](screenshot.png)
 
@@ -20,10 +20,11 @@ AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI 
 - **GitHub Changelog** — Read GitHub's changelog with full content, images, and videos in-app
 - **Global Search** — Search repositories and users across GitHub
 - **User Profiles** — View user profiles with repos, stats, and social links
-- **Liquid Glass UI** — Light/dark mode with transparency, blur effects, and CSS custom properties
+- **Liquid Glass UI** — macOS Tahoe (26+) only, with solid fallbacks on earlier macOS versions and other platforms
 - **GitHub OAuth** — Device flow authentication for GitHub + separate Copilot OAuth
 - **Persistent Chat** — Conversations saved locally, window state remembered across sessions
 - **Ollama Support** — Local models with configurable URL, or Ollama Cloud with API key
+- **In-App Updates** — Detect, download, install, and relaunch when a new version is available
 
 ## Downloads
 
@@ -45,6 +46,7 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 - Fixed macOS window dragging
 - Added in-app update notification and install flow
 - Improved updater error feedback in the app
+- Limited Liquid Glass styling to macOS Tahoe (26+) while keeping standard macOS drag/title bar behavior
 
 ## Tech Stack
 
@@ -55,7 +57,7 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 | **State** | Zustand v4 + Tauri Store (persistent) |
 | **AI Streaming** | Direct SSE/NDJSON via ReadableStream |
 | **Markdown** | react-markdown + remark-gfm + react-syntax-highlighter |
-| **Design** | Liquid Glass (CSS custom properties, light/dark auto) |
+| **Design** | Liquid Glass on macOS Tahoe (26+) with platform fallbacks |
 
 ## AI Providers
 
@@ -122,14 +124,15 @@ NxtGit/
 │   ├── stores/                 # Zustand stores (auth, persisted via Tauri Store)
 │   └── lib/
 │       ├── ai.ts               # AI providers, streaming, thinking, Copilot OAuth
-│       └── github.ts           # GitHub API client (repos, PRs, issues, file CRUD)
+│       ├── github.ts           # GitHub API client (repos, PRs, issues, file CRUD)
+│       └── updater.ts          # Shared updater check/install helpers
 ├── src-tauri/                  # Rust backend
-│   ├── src/lib.rs              # Plugin registration (http, shell, store, window-state)
-│   ├── tauri.conf.json         # Window config, CSP, bundle targets
+│   ├── src/lib.rs              # Plugin registration + macOS platform detection
+│   ├── tauri.conf.json         # Window config, CSP, updater endpoints, bundle targets
 │   └── capabilities/           # Permission allowlists (HTTP domains, plugins)
 ├── .github/workflows/          # CI/CD
-│   ├── release.yml             # Multi-platform release (macOS/Windows/Linux)
-│   └── build.yml               # Reusable build workflow
+│   ├── release.yml             # Multi-platform tagged release + updater asset verification
+│   └── build.yml               # Reusable build workflow with macOS notarization fallback
 └── package.json
 ```
 
