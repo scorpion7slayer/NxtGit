@@ -18,6 +18,7 @@ const CHANGELOG: ChangelogVersion[] = [
     changes: [
       { type: 'fix', text: 'Fixed HTML preview in packaged builds by switching the preview iframe to a blob URL flow' },
       { type: 'fix', text: 'Adjusted regional flags to use native emoji on macOS and a built-in fallback on platforms with poor flag emoji support' },
+      { type: 'improvement', text: 'Hardened HTML preview sanitization to avoid executing repository JavaScript inside the app' },
     ],
   },
   {

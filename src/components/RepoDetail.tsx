@@ -52,6 +52,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import hljs from "highlight.js";
+import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -1024,8 +1025,37 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         const dirPath = currentPath.split("/").slice(0, -1).join("/");
 
         (async () => {
+            const sanitizedHtml = DOMPurify.sanitize(fileContent, {
+                WHOLE_DOCUMENT: true,
+                ADD_TAGS: ["style"],
+                ADD_ATTR: [
+                    "alt",
+                    "class",
+                    "content",
+                    "href",
+                    "id",
+                    "media",
+                    "name",
+                    "poster",
+                    "rel",
+                    "sizes",
+                    "src",
+                    "srcset",
+                    "style",
+                    "type",
+                ],
+                FORBID_TAGS: ["script"],
+            });
             const parser = new DOMParser();
-            const doc = parser.parseFromString(fileContent, "text/html");
+            const doc = parser.parseFromString(sanitizedHtml, "text/html");
+
+            for (const element of Array.from(doc.querySelectorAll("*"))) {
+                for (const attribute of Array.from(element.attributes)) {
+                    if (/^on/i.test(attribute.name)) {
+                        element.removeAttribute(attribute.name);
+                    }
+                }
+            }
 
             const baseHref = `${toRawGitHubUrl(
                 owner,
@@ -1072,31 +1102,9 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                 }
             }
 
-            // Inline local scripts so repo previews keep working inside srcDoc.
-            const scriptEls = Array.from(doc.querySelectorAll("script[src]"));
-            for (const script of scriptEls) {
-                const src = script.getAttribute("src")!;
-                const repoPath = normalizeRepoPath(dirPath, src);
-                if (!repoPath) continue;
-                try {
-                    const js = await fetchFileContent(
-                        owner,
-                        name,
-                        repoPath,
-                        branch,
-                    );
-                    if (cancelled) return;
-                    script.removeAttribute("src");
-                    script.textContent = js;
-                } catch {
-                    /* skip if not found */
-                }
-            }
-
             // Resolve remaining local asset URLs to raw.githubusercontent.com
             const assetAttrs = [
                 ["img[src]", "src"],
-                ["script[src]", "src"],
                 ["source[src]", "src"],
                 ["video[poster]", "poster"],
                 ["audio[src]", "src"],
@@ -1515,7 +1523,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                             <div style={{ background: "var(--bg-secondary)" }}>
                                 <iframe
                                     src={resolvedHtmlUrl}
-                                    sandbox="allow-scripts"
+                                    sandbox=""
                                     title={`Preview ${fileName}`}
                                     style={{
                                         width: "100%",

@@ -45,6 +45,7 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 - Fix: restored HTML preview in packaged builds
 - Fix: used native flag emoji on macOS and fallback flags on platforms that render them poorly
+- Improvement: hardened HTML preview sanitization to avoid executing repository JavaScript inside the app
 
 ## Tech Stack
 

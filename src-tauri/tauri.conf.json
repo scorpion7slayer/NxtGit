@@ -12,7 +12,7 @@
     "app": {
         "macOSPrivateApi": true,
         "security": {
-            "csp": "default-src 'self'; connect-src 'self' https://api.github.com https://api.githubcopilot.com https://api.openrouter.ai https://openrouter.ai https://api.anthropic.com https://api.openai.com https://api.moonshot.cn https://api.kilocode.ai https://api.minimax.chat http://localhost:* http://127.0.0.1:* https://ollama.com https://www.githubstatus.com https://au.githubstatus.com https://eu.githubstatus.com https://jp.githubstatus.com https://us.githubstatus.com https://github.blog https://codewiki.google; script-src 'self' 'unsafe-inline' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; font-src 'self' https: data: blob:; media-src 'self' https: data: blob:; frame-src 'self' https: blob: data:; worker-src 'self' blob:"
+            "csp": "default-src 'self'; connect-src 'self' https://api.github.com https://api.githubcopilot.com https://api.openrouter.ai https://openrouter.ai https://api.anthropic.com https://api.openai.com https://api.moonshot.cn https://api.kilocode.ai https://api.minimax.chat http://localhost:* http://127.0.0.1:* https://ollama.com https://www.githubstatus.com https://au.githubstatus.com https://eu.githubstatus.com https://jp.githubstatus.com https://us.githubstatus.com https://github.blog https://codewiki.google; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; font-src 'self' https: data: blob:; media-src 'self' https: data: blob:; frame-src 'self' https: blob: data:; worker-src 'self' blob:"
         },
         "windows": [
             {
