@@ -39,7 +39,7 @@ const settingsStore = new LazyStore("settings.json");
 const Settings: React.FC = () => {
     const { user, copilotGithubToken, clearCopilotToken } = useAuthStore();
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
-    const [appVersion, setAppVersion] = useState("1.0.0");
+    const [appVersion, setAppVersion] = useState("1.0.1");
     const [ollamaURL, setOllamaURL] = useState("http://localhost:11434");
     const [notifications, setNotifications] = useState(true);
     const [autoReview, setAutoReview] = useState(false);

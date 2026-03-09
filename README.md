@@ -29,14 +29,22 @@ AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI 
 
 | Platform | Architecture | Format |
 | -------- | ------------ | ------ |
-| **macOS** | Apple Silicon (M1+)/Intel (x86_64) | `.app` |
+| **macOS** | Apple Silicon (M1+)/Intel (x86_64) | `.dmg` |
 | **Windows** | x64 | `.msi` / `.exe` |
 | **Windows** | x86 (32-bit) | `.msi` / `.exe` |
 | **Windows** | ARM64 | `.exe` |
 | **Linux** | x64 | `.deb` / `.AppImage` |
-| **Linux** | ARM64 | `.deb` |
+| **Linux** | ARM64 | `.deb` / `.AppImage` |
 
 Download the latest release from the [Releases page](https://github.com/scorpion7slayer/NxtGit/releases).
+
+## Latest Release Notes
+
+### v1.0.1
+
+- Fixed macOS window dragging
+- Added in-app update notification and install flow
+- Improved updater error feedback in the app
 
 ## Tech Stack
 

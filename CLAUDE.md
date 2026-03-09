@@ -65,4 +65,4 @@ No local test runner or linter is configured. CI/CD via GitHub Actions (`.github
 
 ## Current State
 
-Version 1.0.0 released. Core features implemented: GitHub OAuth device flow with token polling, real GitHub API integration (repos, PRs, issues, commits, workflow runs, user profiles), multi-provider AI with streaming (Copilot, OpenRouter, Anthropic, OpenAI, Ollama), AI-powered chat and code review, GitHub status monitoring, global search, and app changelog from GitHub releases. 20 components in `src/components/`.
+Version 1.0.1 prepared. Core features implemented: GitHub OAuth device flow with token polling, real GitHub API integration (repos, PRs, issues, commits, workflow runs, user profiles), multi-provider AI with streaming (Copilot, OpenRouter, Anthropic, OpenAI, Ollama), AI-powered chat and code review, GitHub status monitoring, global search, app changelog from GitHub releases, macOS drag fixes, and in-app update flows. 20+ components in `src/components/`.

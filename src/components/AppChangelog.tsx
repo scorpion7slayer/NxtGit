@@ -13,6 +13,16 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.1',
+    date: 'March 2026',
+    changes: [
+      { type: 'fix', text: 'Fixed macOS window dragging without relying on the resize border hit area' },
+      { type: 'feature', text: 'Added in-app update banner when a newer version is available' },
+      { type: 'feature', text: 'Added manual check, download, install, and restart update flow in Settings' },
+      { type: 'improvement', text: 'Improved updater error handling when release metadata is missing or incomplete' },
+    ],
+  },
+  {
     version: '1.0.0',
     date: 'March 2026',
     changes: [
