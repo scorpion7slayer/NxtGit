@@ -29,8 +29,7 @@ AI-native Git client built with Tauri v2 — Liquid Glass UI, multi-provider AI 
 
 | Platform | Architecture | Format |
 | -------- | ------------ | ------ |
-| **macOS** | Apple Silicon (M1+) | `.dmg` |
-| **macOS** | Intel (x86_64) | `.dmg` |
+| **macOS** | Apple Silicon (M1+)/Intel (x86_64) | `.app` |
 | **Windows** | x64 | `.msi` / `.exe` |
 | **Windows** | x86 (32-bit) | `.msi` / `.exe` |
 | **Windows** | ARM64 | `.exe` |
@@ -152,3 +151,4 @@ MIT License — see [LICENSE](LICENSE)
 ---
 
 Built with love by @scorpion7slayer
+
