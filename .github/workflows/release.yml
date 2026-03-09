@@ -50,11 +50,11 @@ jobs:
         include:
           # macOS — Apple Silicon
           - platform: "macos-26"
-            args: "--target aarch64-apple-darwin"
+            args: "--target aarch64-apple-darwin --bundles dmg"
             target: "aarch64-apple-darwin"
           # macOS — Intel
-          - platform: "macos-latest"
-            args: "--target x86_64-apple-darwin"
+          - platform: "macos-26-intel"
+            args: "--target x86_64-apple-darwin --bundles dmg"
             target: "x86_64-apple-darwin"
           # Linux — x64 (deb)
           - platform: "ubuntu-22.04"
@@ -77,7 +77,7 @@ jobs:
             args: "--target i686-pc-windows-msvc --bundles msi,nsis"
             target: "i686-pc-windows-msvc"
           # Windows — ARM64
-          - platform: "windows-latest"
+          - platform: "windows-11-arm"
             args: "--target aarch64-pc-windows-msvc --bundles nsis"
             target: "aarch64-pc-windows-msvc"
 
@@ -113,6 +113,12 @@ jobs:
             const assetNames = data.assets.map((asset) => asset.name)
             const hasLatestJson = assetNames.includes('latest.json')
             const signatureCount = assetNames.filter((name) => name.endsWith('.sig')).length
+            const hasMacDmg = assetNames.some((name) => name.endsWith('.dmg'))
+            const hasWindowsX64 = assetNames.some((name) => name.includes('_x64-setup.exe') || name.includes('_x64_en-US.msi'))
+            const hasWindowsX86 = assetNames.some((name) => name.includes('_x86-setup.exe') || name.includes('_x86_en-US.msi'))
+            const hasWindowsArm64 = assetNames.some((name) => name.includes('_arm64-setup.exe') || name.includes('_arm64_en-US.msi'))
+            const hasLinuxX64 = assetNames.some((name) => name.includes('_amd64.deb') || name.includes('_amd64.AppImage'))
+            const hasLinuxArm64 = assetNames.some((name) => name.includes('_arm64.deb') || name.includes('_aarch64.AppImage'))
 
             core.info(`Release assets: ${assetNames.join(', ')}`)
 
@@ -123,6 +129,21 @@ jobs:
 
             if (signatureCount === 0) {
               core.setFailed('No updater signature assets were uploaded. The updater will not work.')
+              return
+            }
+
+            if (!hasMacDmg) {
+              core.setFailed('Missing macOS .dmg asset on the draft release.')
+              return
+            }
+
+            if (!hasWindowsX64 || !hasWindowsX86 || !hasWindowsArm64) {
+              core.setFailed('Missing one or more Windows assets (x64, x86, ARM64).')
+              return
+            }
+
+            if (!hasLinuxX64 || !hasLinuxArm64) {
+              core.setFailed('Missing one or more Linux assets (x64, ARM64).')
             }
 
   publish-release:
