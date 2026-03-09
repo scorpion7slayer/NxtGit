@@ -15,10 +15,9 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
-            let window = app.get_webview_window("main").unwrap();
-
             #[cfg(target_os = "macos")]
             {
+                let window = app.get_webview_window("main").unwrap();
                 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
                 apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None)
                     .expect("Failed to apply vibrancy");

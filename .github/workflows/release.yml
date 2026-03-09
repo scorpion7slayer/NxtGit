@@ -49,7 +49,7 @@ jobs:
       matrix:
         include:
           # macOS — Apple Silicon
-          - platform: "macos-latest"
+          - platform: "macos-26"
             args: "--target aarch64-apple-darwin"
             target: "aarch64-apple-darwin"
           # macOS — Intel
@@ -64,9 +64,9 @@ jobs:
           - platform: "ubuntu-24.04"
             args: "--bundles appimage"
             target: "x86_64-unknown-linux-gnu"
-          # Linux — ARM64 (deb)
-          - platform: "ubuntu-24.04"
-            args: "--bundles deb"
+          # Linux — ARM64
+          - platform: "ubuntu-24.04-arm"
+            args: "--bundles deb,appimage"
             target: "aarch64-unknown-linux-gnu"
           # Windows — x64
           - platform: "windows-latest"
