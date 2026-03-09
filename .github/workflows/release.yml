@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   create-release:
     permissions:
@@ -50,11 +53,11 @@ jobs:
         include:
           # macOS — Apple Silicon
           - platform: "macos-26"
-            args: "--target aarch64-apple-darwin --bundles dmg"
+            args: "--target aarch64-apple-darwin --bundles app,dmg"
             target: "aarch64-apple-darwin"
           # macOS — Intel
           - platform: "macos-15-intel"
-            args: "--target x86_64-apple-darwin --bundles dmg"
+            args: "--target x86_64-apple-darwin --bundles app,dmg"
             target: "x86_64-apple-darwin"
           # Linux — x64 (deb)
           - platform: "ubuntu-22.04"
@@ -92,7 +95,7 @@ jobs:
 
   verify-updater-assets:
     permissions:
-      contents: read
+      contents: write
     needs:
       - create-release
       - publish-tauri

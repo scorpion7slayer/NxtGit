@@ -164,7 +164,7 @@
 }
 
 /* =========================================
-   Apple Liquid Glass — macOS only
+   Apple Liquid Glass — macOS Tahoe (26+) only
    Recreates the WWDC 2025 Liquid Glass design:
    - 3-layer system: Highlight / Shadow / Illumination
    - Moderate blur (16-20px) + native vibrancy behind window
@@ -174,13 +174,13 @@
    ========================================= */
 
 /* --- Foundation: transparent so native vibrancy shows --- */
-html.platform-macos,
-html.platform-macos body {
+html.platform-macos-tahoe,
+html.platform-macos-tahoe body {
     background: transparent !important;
 }
 
 /* --- Glass CSS variables (light) --- */
-html.platform-macos {
+html.platform-macos-tahoe {
     --bg-secondary: rgba(255, 255, 255, 0.15);
     --bg-tertiary: rgba(255, 255, 255, 0.08);
     --border: rgba(255, 255, 255, 0.25);
@@ -201,7 +201,7 @@ html.platform-macos {
 
 /* --- Glass CSS variables (dark) --- */
 @media (prefers-color-scheme: dark) {
-    html.platform-macos {
+    html.platform-macos-tahoe {
         --bg-secondary: rgba(255, 255, 255, 0.06);
         --bg-tertiary: rgba(255, 255, 255, 0.03);
         --border: rgba(255, 255, 255, 0.08);
@@ -215,39 +215,42 @@ html.platform-macos {
 }
 
 /* --- Layout regions --- */
-html.platform-macos .layout-root {
+html.platform-macos-tahoe .layout-root {
     background: transparent !important;
 }
 
-html.platform-macos .layout-sidebar {
+html.platform-macos-tahoe .layout-sidebar {
     background: transparent !important;
     border-right: 0.5px solid rgba(255, 255, 255, 0.15) !important;
 }
 
 @media (prefers-color-scheme: dark) {
-    html.platform-macos .layout-sidebar {
+    html.platform-macos-tahoe .layout-sidebar {
         border-right-color: rgba(255, 255, 255, 0.05) !important;
     }
 }
 
-/* Main content: semi-opaque glass for readability */
 html.platform-macos .layout-main {
-    background: rgba(251, 251, 253, 0.7) !important;
-    backdrop-filter: blur(40px) saturate(120%);
-    -webkit-backdrop-filter: blur(40px) saturate(120%);
     padding-top: 38px;
     box-sizing: border-box;
 }
 
+/* Main content: semi-opaque glass for readability */
+html.platform-macos-tahoe .layout-main {
+    background: rgba(251, 251, 253, 0.7) !important;
+    backdrop-filter: blur(40px) saturate(120%);
+    -webkit-backdrop-filter: blur(40px) saturate(120%);
+}
+
 @media (prefers-color-scheme: dark) {
-    html.platform-macos .layout-main {
+    html.platform-macos-tahoe .layout-main {
         background: rgba(13, 17, 23, 0.7) !important;
     }
 }
 
 /* --- Glass cards / panels --- */
-html.platform-macos .border.rounded-lg,
-html.platform-macos .border.rounded-xl {
+html.platform-macos-tahoe .border.rounded-lg,
+html.platform-macos-tahoe .border.rounded-xl {
     border: var(--glass-border) !important;
     border-radius: 20px !important;
     backdrop-filter: var(--glass-blur);
@@ -258,23 +261,23 @@ html.platform-macos .border.rounded-xl {
         transform 0.3s var(--ease);
 }
 
-html.platform-macos .border.rounded-xl {
+html.platform-macos-tahoe .border.rounded-xl {
     border-radius: 24px !important;
 }
 
 /* --- Pill nav items with spring motion --- */
-html.platform-macos .nav-item {
+html.platform-macos-tahoe .nav-item {
     border-radius: 12px;
     transition: all 0.25s var(--ease);
 }
 
-html.platform-macos .nav-item:hover {
+html.platform-macos-tahoe .nav-item:hover {
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 }
 
-html.platform-macos .nav-item.active {
+html.platform-macos-tahoe .nav-item.active {
     background: rgba(255, 255, 255, 0.18);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -282,16 +285,16 @@ html.platform-macos .nav-item.active {
 }
 
 @media (prefers-color-scheme: dark) {
-    html.platform-macos .nav-item:hover {
+    html.platform-macos-tahoe .nav-item:hover {
         background: rgba(255, 255, 255, 0.06);
     }
-    html.platform-macos .nav-item.active {
+    html.platform-macos-tahoe .nav-item.active {
         background: rgba(255, 255, 255, 0.1);
     }
 }
 
 /* --- Capsule / pill buttons --- */
-html.platform-macos .btn-primary {
+html.platform-macos-tahoe .btn-primary {
     border-radius: 20px;
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
@@ -301,17 +304,17 @@ html.platform-macos .btn-primary {
     transition: all 0.2s var(--ease);
 }
 
-html.platform-macos .btn-primary:hover {
+html.platform-macos-tahoe .btn-primary:hover {
     box-shadow:
         inset 0 0.5px 0 rgba(255, 255, 255, 0.3),
         0 4px 20px rgba(0, 122, 255, 0.4);
 }
 
-html.platform-macos .btn-primary:active {
+html.platform-macos-tahoe .btn-primary:active {
     transform: scale(0.97);
 }
 
-html.platform-macos .btn-secondary {
+html.platform-macos-tahoe .btn-secondary {
     border-radius: 20px;
     background: var(--bg-secondary);
     border: var(--glass-border);
@@ -321,7 +324,7 @@ html.platform-macos .btn-secondary {
     transition: all 0.2s var(--ease);
 }
 
-html.platform-macos .btn-secondary:hover {
+html.platform-macos-tahoe .btn-secondary:hover {
     opacity: 1;
     background: rgba(255, 255, 255, 0.22);
     box-shadow:
@@ -329,12 +332,12 @@ html.platform-macos .btn-secondary:hover {
         0 0 12px rgba(255, 255, 255, 0.15);
 }
 
-html.platform-macos .btn-secondary:active {
+html.platform-macos-tahoe .btn-secondary:active {
     transform: scale(0.97);
 }
 
 @media (prefers-color-scheme: dark) {
-    html.platform-macos .btn-secondary:hover {
+    html.platform-macos-tahoe .btn-secondary:hover {
         background: rgba(255, 255, 255, 0.1);
         box-shadow:
             var(--glass-highlight),
@@ -343,7 +346,7 @@ html.platform-macos .btn-secondary:active {
 }
 
 /* --- Glass inputs --- */
-html.platform-macos .input-glass {
+html.platform-macos-tahoe .input-glass {
     border-radius: 14px;
     border: var(--glass-border);
     backdrop-filter: blur(12px) saturate(180%);
@@ -352,7 +355,7 @@ html.platform-macos .input-glass {
     transition: all 0.2s var(--ease);
 }
 
-html.platform-macos .input-glass:focus {
+html.platform-macos-tahoe .input-glass:focus {
     border-color: rgba(0, 122, 255, 0.5);
     box-shadow:
         var(--glass-highlight),
@@ -410,64 +413,64 @@ html.platform-macos .macos-drag-bar-nodrag {
 }
 
 /* --- Dividers --- */
-html.platform-macos .divide-y > :not(:first-child) {
+html.platform-macos-tahoe .divide-y > :not(:first-child) {
     border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-html.platform-macos .border-b {
+html.platform-macos-tahoe .border-b {
     border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
-html.platform-macos .border-t {
+html.platform-macos-tahoe .border-t {
     border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 @media (prefers-color-scheme: dark) {
-    html.platform-macos .divide-y > :not(:first-child),
-    html.platform-macos .border-b,
-    html.platform-macos .border-t {
+    html.platform-macos-tahoe .divide-y > :not(:first-child),
+    html.platform-macos-tahoe .border-b,
+    html.platform-macos-tahoe .border-t {
         border-color: rgba(255, 255, 255, 0.05) !important;
     }
 }
 
 /* --- Scrollbar --- */
-html.platform-macos ::-webkit-scrollbar {
+html.platform-macos-tahoe ::-webkit-scrollbar {
     width: 6px;
 }
 
-html.platform-macos ::-webkit-scrollbar-track {
+html.platform-macos-tahoe ::-webkit-scrollbar-track {
     background: transparent;
 }
 
-html.platform-macos ::-webkit-scrollbar-thumb {
+html.platform-macos-tahoe ::-webkit-scrollbar-thumb {
     background: transparent;
     border-radius: 3px;
     transition: background 0.2s;
 }
 
-html.platform-macos *:hover::-webkit-scrollbar-thumb,
-html.platform-macos *:active::-webkit-scrollbar-thumb {
+html.platform-macos-tahoe *:hover::-webkit-scrollbar-thumb,
+html.platform-macos-tahoe *:active::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.12);
 }
 
-html.platform-macos *:hover::-webkit-scrollbar-thumb:hover,
-html.platform-macos *:active::-webkit-scrollbar-thumb:hover {
+html.platform-macos-tahoe *:hover::-webkit-scrollbar-thumb:hover,
+html.platform-macos-tahoe *:active::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
-    html.platform-macos *:hover::-webkit-scrollbar-thumb,
-    html.platform-macos *:active::-webkit-scrollbar-thumb {
+    html.platform-macos-tahoe *:hover::-webkit-scrollbar-thumb,
+    html.platform-macos-tahoe *:active::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.12);
     }
-    html.platform-macos *:hover::-webkit-scrollbar-thumb:hover,
-    html.platform-macos *:active::-webkit-scrollbar-thumb:hover {
+    html.platform-macos-tahoe *:hover::-webkit-scrollbar-thumb:hover,
+    html.platform-macos-tahoe *:active::-webkit-scrollbar-thumb:hover {
         background: rgba(255, 255, 255, 0.22);
     }
 }
 
 /* --- Login page glass --- */
-html.platform-macos .login-page {
+html.platform-macos-tahoe .login-page {
     background: transparent !important;
 }
 
@@ -476,12 +479,12 @@ html.platform-macos .login-page {
     padding: 2.5rem;
 }
 
-html:not(.platform-macos) .login-card {
+html:not(.platform-macos-tahoe) .login-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
 }
 
-html.platform-macos .login-card {
+html.platform-macos-tahoe .login-card {
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -494,7 +497,7 @@ html.platform-macos .login-card {
 }
 
 @media (prefers-color-scheme: dark) {
-    html.platform-macos .login-card {
+    html.platform-macos-tahoe .login-card {
         background: rgba(255, 255, 255, 0.04);
         box-shadow:
             var(--glass-highlight),

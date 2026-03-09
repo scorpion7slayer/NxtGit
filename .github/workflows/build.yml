@@ -142,11 +142,34 @@ jobs:
                   echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
                   echo "Certificate imported: $CERT_ID"
 
-            - name: Build with Tauri (macOS notarized)
+            - name: Build with Tauri (macOS notarized, Apple Silicon)
               id: build-notarized
-              if: contains(inputs.platform, 'macos')
+              if: contains(inputs.platform, 'macos') && inputs.target == 'aarch64-apple-darwin'
               continue-on-error: true
-              timeout-minutes: 15
+              timeout-minutes: 30
+              uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
+                  APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+                  APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+                  APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
+                  APPLE_ID: ${{ secrets.APPLE_ID }}
+                  APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+                  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+              with:
+                  releaseId: ${{ inputs.release-id }}
+                  tagName: v${{ steps.get-version.outputs.version }}
+                  includeUpdaterJson: true
+                  args: ${{ inputs.build-args }}
+
+            - name: Build with Tauri (macOS notarized, Intel)
+              id: build-notarized-intel
+              if: contains(inputs.platform, 'macos') && inputs.target == 'x86_64-apple-darwin'
+              continue-on-error: true
+              timeout-minutes: 45
               uses: tauri-apps/tauri-action@v0
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -181,7 +204,7 @@ jobs:
 
             # Fallback: if macOS build failed (notarization timeout), rebuild signed-only
             - name: Build with Tauri (signed only, no notarization)
-              if: steps.build-notarized.outcome == 'failure' && contains(inputs.platform, 'macos')
+              if: contains(inputs.platform, 'macos') && (steps.build-notarized.outcome == 'failure' || steps.build-notarized-intel.outcome == 'failure')
               uses: tauri-apps/tauri-action@v0
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -198,7 +221,7 @@ jobs:
                   args: ${{ inputs.build-args }}
 
             - name: Summarize macOS signed-only fallback
-              if: steps.build-notarized.outcome == 'failure' && contains(inputs.platform, 'macos')
+              if: contains(inputs.platform, 'macos') && (steps.build-notarized.outcome == 'failure' || steps.build-notarized-intel.outcome == 'failure')
               shell: bash
               run: |
                   {
