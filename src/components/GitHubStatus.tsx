@@ -10,6 +10,7 @@ import {
     ExternalLink,
 } from "lucide-react";
 import { fetch } from "@tauri-apps/plugin-http";
+import FlagIcon from "./FlagIcon";
 
 // --- Types ---
 
@@ -47,7 +48,7 @@ interface StatusSummary {
 
 interface RegionalStatus {
     region: string;
-    flag: string;
+    flagCode: "au" | "eu" | "jp" | "us";
     url: string;
     status: { indicator: string; description: string } | null;
     loading: boolean;
@@ -123,11 +124,11 @@ function timeAgo(dateStr: string): string {
 
 // --- Regions ---
 
-const REGIONS: { region: string; flag: string; url: string }[] = [
-    { region: "United States", flag: "🇺🇸", url: "https://us.githubstatus.com/api/v2/status.json" },
-    { region: "Europe", flag: "🇪🇺", url: "https://eu.githubstatus.com/api/v2/status.json" },
-    { region: "Australia", flag: "🇦🇺", url: "https://au.githubstatus.com/api/v2/status.json" },
-    { region: "Japan", flag: "🇯🇵", url: "https://jp.githubstatus.com/api/v2/status.json" },
+const REGIONS: { region: string; flagCode: "au" | "eu" | "jp" | "us"; url: string }[] = [
+    { region: "United States", flagCode: "us", url: "https://us.githubstatus.com/api/v2/status.json" },
+    { region: "Europe", flagCode: "eu", url: "https://eu.githubstatus.com/api/v2/status.json" },
+    { region: "Australia", flagCode: "au", url: "https://au.githubstatus.com/api/v2/status.json" },
+    { region: "Japan", flagCode: "jp", url: "https://jp.githubstatus.com/api/v2/status.json" },
 ];
 
 // --- Component ---
@@ -299,7 +300,11 @@ const GitHubStatus: React.FC = () => {
                         className="border rounded-lg p-4 flex items-center gap-3"
                         style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
                     >
-                        <span className="text-xl">{r.flag}</span>
+                        <FlagIcon
+                            code={r.flagCode}
+                            title={r.region}
+                            className="w-7 h-5 rounded-sm shadow-sm flex-shrink-0"
+                        />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                                 {r.region}

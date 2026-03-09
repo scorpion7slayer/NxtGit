@@ -41,11 +41,10 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 ## Latest Release Notes
 
-### v1.0.2
+### v1.0.3
 
-- Fixed GitHub Changelog videos and embeds in the app
-- Prevented the login screen from flashing before restoring a saved session
-- Aligned app version metadata across updater, settings, and API requests
+- Fix: restored HTML preview with linked CSS, JavaScript, and relative assets
+- Fix: replaced system flag emoji with consistent built-in flags for regional status
 
 ## Tech Stack
 

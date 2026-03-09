@@ -13,6 +13,14 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.3',
+    date: 'March 2026',
+    changes: [
+      { type: 'fix', text: 'Fixed HTML preview so linked CSS, JavaScript, and relative assets render correctly in the app' },
+      { type: 'fix', text: 'Fixed regional flags rendering on platforms without native flag emoji support, including Windows' },
+    ],
+  },
+  {
     version: '1.0.2',
     date: 'March 2026',
     changes: [

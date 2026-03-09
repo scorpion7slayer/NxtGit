@@ -52,7 +52,6 @@ import {
     Sparkles,
 } from "lucide-react";
 import hljs from "highlight.js";
-import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -301,6 +300,78 @@ function ResponsiveTabs({
             )}
         </div>
     );
+}
+
+function splitAssetReference(reference: string) {
+    const [pathWithQuery, hash = ""] = reference.split("#");
+    const [pathname, query = ""] = pathWithQuery.split("?");
+
+    return {
+        pathname,
+        suffix: `${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`,
+    };
+}
+
+function normalizeRepoPath(baseDir: string, assetPath: string): string | null {
+    if (
+        !assetPath ||
+        assetPath.startsWith("#") ||
+        /^(?:[a-z]+:)?\/\//i.test(assetPath) ||
+        /^(?:data|blob|javascript|mailto|tel):/i.test(assetPath)
+    ) {
+        return null;
+    }
+
+    const { pathname } = splitAssetReference(assetPath);
+    const seed = pathname.startsWith("/")
+        ? pathname.slice(1).split("/")
+        : [...(baseDir ? baseDir.split("/") : []), ...pathname.split("/")];
+    const normalized: string[] = [];
+
+    for (const segment of seed) {
+        if (!segment || segment === ".") {
+            continue;
+        }
+
+        if (segment === "..") {
+            normalized.pop();
+            continue;
+        }
+
+        normalized.push(segment);
+    }
+
+    return normalized.join("/");
+}
+
+function toRawGitHubUrl(
+    owner: string,
+    name: string,
+    branch: string,
+    repoPath: string,
+    suffix = "",
+) {
+    return `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${repoPath}${suffix}`;
+}
+
+function rewriteCssUrls(
+    css: string,
+    owner: string,
+    name: string,
+    branch: string,
+    baseDir: string,
+) {
+    return css.replace(/url\(([^)]+)\)/g, (match, rawValue: string) => {
+        const trimmed = rawValue.trim().replace(/^['"]|['"]$/g, "");
+        const repoPath = normalizeRepoPath(baseDir, trimmed);
+
+        if (!repoPath) {
+            return match;
+        }
+
+        const { suffix } = splitAssetReference(trimmed);
+        return `url("${toRawGitHubUrl(owner, name, branch, repoPath, suffix)}")`;
+    });
 }
 
 const RepoDetail: React.FC = () => {
@@ -950,20 +1021,25 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         }
         let cancelled = false;
         const dirPath = currentPath.split("/").slice(0, -1).join("/");
-        const resolvePath = (href: string) => {
-            if (/^https?:\/\/|^\/\//i.test(href)) return null; // absolute URL, skip
-            return dirPath ? `${dirPath}/${href}` : href;
-        };
 
         (async () => {
-            // Sanitize HTML content with DOMPurify to prevent XSS
-            const sanitized = DOMPurify.sanitize(fileContent, {
-                WHOLE_DOCUMENT: true,
-                ADD_TAGS: ["style", "link"],
-                ADD_ATTR: ["rel", "href", "src", "alt", "class", "id", "name"],
-            });
             const parser = new DOMParser();
-            const doc = parser.parseFromString(sanitized, "text/html");
+            const doc = parser.parseFromString(fileContent, "text/html");
+
+            const baseHref = `${toRawGitHubUrl(
+                owner,
+                name,
+                branch,
+                dirPath ? `${dirPath}/` : "",
+            )}`;
+            let baseEl = doc.querySelector("base");
+            if (!baseEl) {
+                baseEl = doc.createElement("base");
+                if (doc.head) {
+                    doc.head.prepend(baseEl);
+                }
+            }
+            baseEl.setAttribute("href", baseHref);
 
             // Inline linked stylesheets: <link rel="stylesheet" href="...">
             const linkEls = Array.from(
@@ -971,14 +1047,20 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
             );
             for (const link of linkEls) {
                 const href = link.getAttribute("href")!;
-                const repoPath = resolvePath(href);
+                const repoPath = normalizeRepoPath(dirPath, href);
                 if (!repoPath) continue;
                 try {
-                    const css = await fetchFileContent(
+                    const css = rewriteCssUrls(
+                        await fetchFileContent(
+                            owner,
+                            name,
+                            repoPath,
+                            branch,
+                        ),
                         owner,
                         name,
-                        repoPath,
                         branch,
+                        repoPath.split("/").slice(0, -1).join("/"),
                     );
                     if (cancelled) return;
                     const style = doc.createElement("style");
@@ -989,13 +1071,49 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                 }
             }
 
-            // Resolve relative image src to raw.githubusercontent.com
-            const rawBase = `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${dirPath ? dirPath + "/" : ""}`;
-            const imgEls = Array.from(doc.querySelectorAll("img[src]"));
-            for (const img of imgEls) {
-                const src = img.getAttribute("src")!;
-                if (!/^https?:\/\/|^\/\/|^data:/i.test(src)) {
-                    img.setAttribute("src", `${rawBase}${src}`);
+            // Inline local scripts so repo previews keep working inside srcDoc.
+            const scriptEls = Array.from(doc.querySelectorAll("script[src]"));
+            for (const script of scriptEls) {
+                const src = script.getAttribute("src")!;
+                const repoPath = normalizeRepoPath(dirPath, src);
+                if (!repoPath) continue;
+                try {
+                    const js = await fetchFileContent(
+                        owner,
+                        name,
+                        repoPath,
+                        branch,
+                    );
+                    if (cancelled) return;
+                    script.removeAttribute("src");
+                    script.textContent = js;
+                } catch {
+                    /* skip if not found */
+                }
+            }
+
+            // Resolve remaining local asset URLs to raw.githubusercontent.com
+            const assetAttrs = [
+                ["img[src]", "src"],
+                ["script[src]", "src"],
+                ["source[src]", "src"],
+                ["video[poster]", "poster"],
+                ["audio[src]", "src"],
+                ["link[href]", "href"],
+            ] as const;
+
+            for (const [selector, attribute] of assetAttrs) {
+                const elements = Array.from(doc.querySelectorAll(selector));
+                for (const element of elements) {
+                    const value = element.getAttribute(attribute);
+                    if (!value) continue;
+                    const repoPath = normalizeRepoPath(dirPath, value);
+                    if (!repoPath) continue;
+                    const { suffix } = splitAssetReference(value);
+                    element.setAttribute(
+                        attribute,
+                        toRawGitHubUrl(owner, name, branch, repoPath, suffix),
+                    );
                 }
             }
 
