@@ -41,6 +41,10 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 ## Latest Release Notes
 
+### v1.0.6
+
+- Fix: restored CDN stylesheet loading in HTML preview, including Bootstrap and other external CSS links
+
 ### v1.0.5-fix
 
 - Fix: added an optional interactive HTML preview mode for repository JavaScript in a sandboxed iframe
