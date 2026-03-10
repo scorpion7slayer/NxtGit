@@ -415,6 +415,48 @@ function rewriteCssUrls(
         );
 }
 
+function rewriteCssUrlsAgainstBaseUrl(css: string, baseUrl: string) {
+    const resolveExternalCssUrl = (assetPath: string) => {
+        if (
+            !assetPath ||
+            assetPath.startsWith("#") ||
+            /^(?:data|blob|javascript|mailto|tel):/i.test(assetPath)
+        ) {
+            return null;
+        }
+
+        try {
+            return new URL(assetPath, baseUrl).toString();
+        } catch {
+            return null;
+        }
+    };
+
+    return css
+        .replace(/url\(([^)]+)\)/g, (match, rawValue: string) => {
+            const trimmed = rawValue.trim().replace(/^['"]|['"]$/g, "");
+            const rewritten = resolveExternalCssUrl(trimmed);
+
+            if (!rewritten) {
+                return match;
+            }
+
+            return `url("${rewritten}")`;
+        })
+        .replace(
+            /@import\s+(?:url\()?\s*(['"]?)([^'")\s]+)\1\s*\)?/g,
+            (match, _quote: string, rawValue: string) => {
+                const rewritten = resolveExternalCssUrl(rawValue);
+
+                if (!rewritten) {
+                    return match;
+                }
+
+                return `@import url("${rewritten}")`;
+            },
+        );
+}
+
 function rewriteSrcsetUrls(
     srcset: string,
     owner: string,
@@ -1273,26 +1315,44 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
             for (const link of linkEls) {
                 const href = link.getAttribute("href")!;
                 const repoPath = normalizeRepoPath(dirPath, href);
-                if (!repoPath) continue;
                 try {
-                    const css = rewriteCssUrls(
-                        await fetchFileContent(
+                    let css: string | null = null;
+
+                    if (repoPath) {
+                        css = rewriteCssUrls(
+                            await fetchFileContent(
+                                owner,
+                                name,
+                                repoPath,
+                                branch,
+                            ),
                             owner,
                             name,
-                            repoPath,
                             branch,
-                        ),
-                        owner,
-                        name,
-                        branch,
-                        repoPath.split("/").slice(0, -1).join("/"),
-                    );
-                    if (cancelled) return;
+                            repoPath.split("/").slice(0, -1).join("/"),
+                        );
+                    } else {
+                        const externalUrl = new URL(href, baseHref).toString();
+                        const response = await fetch(externalUrl);
+                        if (!response.ok) {
+                            continue;
+                        }
+                        css = rewriteCssUrlsAgainstBaseUrl(
+                            await response.text(),
+                            externalUrl,
+                        );
+                    }
+
+                    if (cancelled || !css) return;
                     const style = doc.createElement("style");
+                    const media = link.getAttribute("media");
+                    if (media) {
+                        style.setAttribute("media", media);
+                    }
                     style.textContent = css;
                     link.replaceWith(style);
                 } catch {
-                    /* skip if not found */
+                    /* keep external stylesheet link if fetch/inline fails */
                 }
             }
 
