@@ -13,6 +13,14 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.5-fix',
+    date: 'March 2026',
+    changes: [
+      { type: 'fix', text: 'Added an optional interactive HTML preview mode that can run repository JavaScript inside a sandboxed iframe' },
+      { type: 'fix', text: 'Improved packaged HTML preview support for @import, inline style URLs, srcset, and additional asset references' },
+    ],
+  },
+  {
     version: '1.0.5',
     date: 'March 2026',
     changes: [

@@ -41,6 +41,11 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 ## Latest Release Notes
 
+### v1.0.5-fix
+
+- Fix: added an optional interactive HTML preview mode for repository JavaScript in a sandboxed iframe
+- Fix: improved packaged HTML preview support for `@import`, inline style URLs, `srcset`, and extra asset references
+
 ### v1.0.5
 
 - Fix: added updater fallback logic so apps on `1.0.4` can detect and install `1.0.4-fix` releases

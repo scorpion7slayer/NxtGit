@@ -355,6 +355,22 @@ function toRawGitHubUrl(
     return `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${repoPath}${suffix}`;
 }
 
+function rewriteAssetReference(
+    assetValue: string,
+    owner: string,
+    name: string,
+    branch: string,
+    baseDir: string,
+) {
+    const repoPath = normalizeRepoPath(baseDir, assetValue);
+    if (!repoPath) {
+        return null;
+    }
+
+    const { suffix } = splitAssetReference(assetValue);
+    return toRawGitHubUrl(owner, name, branch, repoPath, suffix);
+}
+
 function rewriteCssUrls(
     css: string,
     owner: string,
@@ -362,17 +378,147 @@ function rewriteCssUrls(
     branch: string,
     baseDir: string,
 ) {
-    return css.replace(/url\(([^)]+)\)/g, (match, rawValue: string) => {
-        const trimmed = rawValue.trim().replace(/^['"]|['"]$/g, "");
-        const repoPath = normalizeRepoPath(baseDir, trimmed);
+    return css
+        .replace(/url\(([^)]+)\)/g, (match, rawValue: string) => {
+            const trimmed = rawValue.trim().replace(/^['"]|['"]$/g, "");
+            const rewritten = rewriteAssetReference(
+                trimmed,
+                owner,
+                name,
+                branch,
+                baseDir,
+            );
 
-        if (!repoPath) {
-            return match;
+            if (!rewritten) {
+                return match;
+            }
+
+            return `url("${rewritten}")`;
+        })
+        .replace(
+            /@import\s+(?:url\()?\s*(['"]?)([^'")\s]+)\1\s*\)?/g,
+            (match, _quote: string, rawValue: string) => {
+                const rewritten = rewriteAssetReference(
+                    rawValue,
+                    owner,
+                    name,
+                    branch,
+                    baseDir,
+                );
+
+                if (!rewritten) {
+                    return match;
+                }
+
+                return `@import url("${rewritten}")`;
+            },
+        );
+}
+
+function rewriteSrcsetUrls(
+    srcset: string,
+    owner: string,
+    name: string,
+    branch: string,
+    baseDir: string,
+) {
+    return srcset
+        .split(",")
+        .map((candidate) => {
+            const trimmed = candidate.trim();
+            if (!trimmed) {
+                return candidate;
+            }
+
+            const [assetPath, ...descriptorParts] = trimmed.split(/\s+/);
+            const rewritten = rewriteAssetReference(
+                assetPath,
+                owner,
+                name,
+                branch,
+                baseDir,
+            );
+
+            if (!rewritten) {
+                return trimmed;
+            }
+
+            return [rewritten, ...descriptorParts].join(" ");
+        })
+        .join(", ");
+}
+
+function upsertMetaHttpEquiv(
+    doc: Document,
+    httpEquiv: string,
+    content: string,
+) {
+    let meta = Array.from(
+        doc.querySelectorAll(`meta[http-equiv="${httpEquiv}"]`),
+    )[0];
+
+    if (!meta) {
+        meta = doc.createElement("meta");
+        meta.setAttribute("http-equiv", httpEquiv);
+        if (doc.head) {
+            doc.head.prepend(meta);
+        }
+    }
+
+    meta.setAttribute("content", content);
+}
+
+function injectPreviewCsp(doc: Document, interactive: boolean) {
+    const csp = interactive
+        ? "default-src 'self' https: data: blob:; script-src 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'unsafe-inline' https:; img-src https: data: blob:; font-src https: data: blob:; media-src https: data: blob:; connect-src https: http:; frame-src https: blob: data:; worker-src blob: https:; object-src 'none';"
+        : "default-src 'self' https: data: blob:; script-src 'none'; style-src 'unsafe-inline' https:; img-src https: data: blob:; font-src https: data: blob:; media-src https: data: blob:; frame-src https: blob: data:; object-src 'none';";
+
+    upsertMetaHttpEquiv(doc, "Content-Security-Policy", csp);
+}
+
+function cloneInteractiveScripts(
+    sourceDoc: Document,
+    targetDoc: Document,
+    owner: string,
+    name: string,
+    branch: string,
+    baseDir: string,
+) {
+    const scripts = Array.from(sourceDoc.querySelectorAll("script"));
+
+    for (const script of scripts) {
+        const nextScript = targetDoc.createElement("script");
+
+        for (const attribute of Array.from(script.attributes)) {
+            if (/^on/i.test(attribute.name)) {
+                continue;
+            }
+
+            if (attribute.name === "src") {
+                const rewritten = rewriteAssetReference(
+                    attribute.value,
+                    owner,
+                    name,
+                    branch,
+                    baseDir,
+                );
+                nextScript.setAttribute("src", rewritten ?? attribute.value);
+                continue;
+            }
+
+            nextScript.setAttribute(attribute.name, attribute.value);
         }
 
-        const { suffix } = splitAssetReference(trimmed);
-        return `url("${toRawGitHubUrl(owner, name, branch, repoPath, suffix)}")`;
-    });
+        if (!script.src && script.textContent) {
+            nextScript.textContent = script.textContent;
+        }
+
+        if (targetDoc.body) {
+            targetDoc.body.append(nextScript);
+        } else if (targetDoc.head) {
+            targetDoc.head.append(nextScript);
+        }
+    }
 }
 
 const RepoDetail: React.FC = () => {
@@ -947,6 +1093,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
     const [showPreview, setShowPreview] = useState(false);
     const [resolvedHtml, setResolvedHtml] = useState<string | null>(null);
     const [resolvedHtmlUrl, setResolvedHtmlUrl] = useState<string | null>(null);
+    const [interactiveHtmlPreview, setInteractiveHtmlPreview] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -968,6 +1115,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         setSaveSuccess(false);
         setSaveError(null);
         setShowPreview(false);
+        setInteractiveHtmlPreview(false);
         setShowDeleteConfirm(false);
 
         fetchRepoContents(owner, name, currentPath, branch)
@@ -1023,6 +1171,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         }
         let cancelled = false;
         const dirPath = currentPath.split("/").slice(0, -1).join("/");
+        const sourceDoc = new DOMParser().parseFromString(fileContent, "text/html");
 
         (async () => {
             const sanitizedHtml = DOMPurify.sanitize(fileContent, {
@@ -1073,6 +1222,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                 }
             }
             baseEl.setAttribute("href", baseHref);
+            injectPreviewCsp(doc, interactiveHtmlPreview);
 
             // Inline linked stylesheets: <link rel="stylesheet" href="...">
             const linkEls = Array.from(
@@ -1104,12 +1254,41 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                 }
             }
 
+            for (const styleEl of Array.from(doc.querySelectorAll("style"))) {
+                styleEl.textContent = rewriteCssUrls(
+                    styleEl.textContent || "",
+                    owner,
+                    name,
+                    branch,
+                    dirPath,
+                );
+            }
+
+            for (const element of Array.from(doc.querySelectorAll("[style]"))) {
+                const styleValue = element.getAttribute("style");
+                if (!styleValue) continue;
+                element.setAttribute(
+                    "style",
+                    rewriteCssUrls(styleValue, owner, name, branch, dirPath),
+                );
+            }
+
+            for (const element of Array.from(doc.querySelectorAll("[srcset]"))) {
+                const srcset = element.getAttribute("srcset");
+                if (!srcset) continue;
+                element.setAttribute(
+                    "srcset",
+                    rewriteSrcsetUrls(srcset, owner, name, branch, dirPath),
+                );
+            }
+
             // Resolve remaining local asset URLs to raw.githubusercontent.com
             const assetAttrs = [
                 ["img[src]", "src"],
                 ["source[src]", "src"],
                 ["video[poster]", "poster"],
                 ["audio[src]", "src"],
+                ["object[data]", "data"],
                 ["link[href]", "href"],
             ] as const;
 
@@ -1128,13 +1307,33 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                 }
             }
 
+            if (interactiveHtmlPreview) {
+                cloneInteractiveScripts(
+                    sourceDoc,
+                    doc,
+                    owner,
+                    name,
+                    branch,
+                    dirPath,
+                );
+            }
+
             if (!cancelled) setResolvedHtml(doc.documentElement.outerHTML);
         })();
 
         return () => {
             cancelled = true;
         };
-    }, [showPreview, isHtml, fileContent, owner, name, currentPath, branch]);
+    }, [
+        showPreview,
+        isHtml,
+        fileContent,
+        owner,
+        name,
+        currentPath,
+        branch,
+        interactiveHtmlPreview,
+    ]);
 
     useEffect(() => {
         if (!resolvedHtml) {
@@ -1423,6 +1622,24 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                                     {showPreview ? "Code" : "Preview"}
                                 </button>
                             )}
+                            {isHtml && showPreview && !editing && (
+                                <button
+                                    onClick={() =>
+                                        setInteractiveHtmlPreview((value) => !value)
+                                    }
+                                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] hover:bg-[var(--bg-secondary)] transition-colors"
+                                    style={{
+                                        color: interactiveHtmlPreview
+                                            ? "var(--warning)"
+                                            : "var(--text-secondary)",
+                                    }}
+                                >
+                                    <PlayCircle className="w-3 h-3" />
+                                    {interactiveHtmlPreview
+                                        ? "JS on"
+                                        : "Enable JS"}
+                                </button>
+                            )}
                             {!isImage && !editing && (
                                 <button
                                     onClick={() => {
@@ -1523,9 +1740,26 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                         isHtml &&
                         (resolvedHtmlUrl ? (
                             <div style={{ background: "var(--bg-secondary)" }}>
+                                {interactiveHtmlPreview && (
+                                    <div
+                                        className="px-4 py-2 text-[11px] flex items-center gap-2 border-b"
+                                        style={{
+                                            borderColor: "var(--border)",
+                                            background: "rgba(255, 149, 0, 0.08)",
+                                            color: "var(--warning)",
+                                        }}
+                                    >
+                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                        Interactive preview enabled. Repository JavaScript runs in a sandboxed iframe with no access to the app context.
+                                    </div>
+                                )}
                                 <iframe
                                     src={resolvedHtmlUrl}
-                                    sandbox=""
+                                    sandbox={
+                                        interactiveHtmlPreview
+                                            ? "allow-scripts"
+                                            : ""
+                                    }
                                     title={`Preview ${fileName}`}
                                     style={{
                                         width: "100%",
