@@ -537,56 +537,57 @@ type StylesheetDescriptor =
       };
 
 function extractStylesheetDescriptors(html: string): StylesheetDescriptor[] {
-    const sanitizedRoot = DOMPurify.sanitize(html, {
-        WHOLE_DOCUMENT: true,
-        RETURN_DOM: true,
-        ALLOWED_TAGS: ["body", "head", "html", "link", "style"],
-        ALLOWED_ATTR: [
-            "as",
-            "blocking",
-            "crossorigin",
-            "disabled",
-            "fetchpriority",
-            "href",
-            "imagesizes",
-            "imagesrcset",
-            "integrity",
-            "media",
-            "nonce",
-            "referrerpolicy",
-            "rel",
-            "type",
-        ],
-    }) as Document;
-
+    const parser = new DOMParser();
+    const sourceDoc = parser.parseFromString(html, "text/html");
+    const allowedAttributes = new Set([
+        "as",
+        "blocking",
+        "crossorigin",
+        "disabled",
+        "fetchpriority",
+        "href",
+        "imagesizes",
+        "imagesrcset",
+        "integrity",
+        "media",
+        "nonce",
+        "referrerpolicy",
+        "rel",
+        "type",
+    ]);
     const descriptors: StylesheetDescriptor[] = [];
 
     for (const node of Array.from(
-        sanitizedRoot.querySelectorAll("link[href], style"),
+        sourceDoc.querySelectorAll("link[href], style"),
     )) {
-            if (node instanceof HTMLLinkElement) {
-                const relTokens = node.rel
+            if (node.tagName.toLowerCase() === "link") {
+                const href = node.getAttribute("href") || "";
+                const relTokens = (node.getAttribute("rel") || "")
                     .split(/\s+/)
                     .map((token) => token.trim().toLowerCase())
                     .filter(Boolean);
 
-                if (!relTokens.includes("stylesheet") || !node.href) {
+                if (!relTokens.includes("stylesheet") || !href) {
                     continue;
                 }
 
                 descriptors.push({
                     kind: "link" as const,
-                    href: node.getAttribute("href") || "",
+                    href,
                     media: node.getAttribute("media") || undefined,
-                    attributes: Array.from(node.attributes).map((attribute) => ({
-                        name: attribute.name,
-                        value: attribute.value,
-                    })),
+                    attributes: Array.from(node.attributes)
+                        .filter((attribute) =>
+                            allowedAttributes.has(attribute.name.toLowerCase()),
+                        )
+                        .map((attribute) => ({
+                            name: attribute.name,
+                            value: attribute.value,
+                        })),
                 });
                 continue;
             }
 
-            if (node instanceof HTMLStyleElement) {
+            if (node.tagName.toLowerCase() === "style") {
                 descriptors.push({
                     kind: "style" as const,
                     content: node.textContent || "",

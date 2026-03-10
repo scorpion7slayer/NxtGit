@@ -13,7 +13,7 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
-    version: '1.0.7',
+    version: '1.0.7-fix',
     date: 'March 2026',
     changes: [
       { type: 'fix', text: 'Restored CDN stylesheet loading in HTML preview, including Bootstrap and other external CSS links' },
