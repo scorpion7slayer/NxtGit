@@ -38,6 +38,11 @@
         "createUpdaterArtifacts": true,
         "category": "DeveloperTool",
         "copyright": "MIT",
+        "windows": {
+            "wix": {
+                "version": "1.0.4.0"
+            }
+        },
         "macOS": {
             "frameworks": [],
             "minimumSystemVersion": "14.0"
