@@ -1,7 +1,7 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "NxtGit",
-    "version": "1.0.6-fix",
+    "version": "1.0.7",
     "identifier": "com.scorpion7slayer.nxtgit",
     "build": {
         "beforeDevCommand": "npm run dev",
@@ -40,7 +40,7 @@
         "copyright": "MIT",
         "windows": {
             "wix": {
-                "version": "1.0.6.1"
+                "version": "1.0.7.0"
             }
         },
         "macOS": {

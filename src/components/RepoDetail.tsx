@@ -523,6 +523,81 @@ type InteractiveScriptDescriptor = {
     content: string;
 };
 
+type StylesheetDescriptor =
+    | {
+          kind: "link";
+          attributes: Array<{ name: string; value: string }>;
+          href: string;
+          media?: string;
+      }
+    | {
+          kind: "style";
+          content: string;
+          media?: string;
+      };
+
+function extractStylesheetDescriptors(html: string): StylesheetDescriptor[] {
+    const sanitizedRoot = DOMPurify.sanitize(html, {
+        WHOLE_DOCUMENT: true,
+        RETURN_DOM: true,
+        ALLOWED_TAGS: ["body", "head", "html", "link", "style"],
+        ALLOWED_ATTR: [
+            "as",
+            "blocking",
+            "crossorigin",
+            "disabled",
+            "fetchpriority",
+            "href",
+            "imagesizes",
+            "imagesrcset",
+            "integrity",
+            "media",
+            "nonce",
+            "referrerpolicy",
+            "rel",
+            "type",
+        ],
+    }) as Document;
+
+    const descriptors: StylesheetDescriptor[] = [];
+
+    for (const node of Array.from(
+        sanitizedRoot.querySelectorAll("link[href], style"),
+    )) {
+            if (node instanceof HTMLLinkElement) {
+                const relTokens = node.rel
+                    .split(/\s+/)
+                    .map((token) => token.trim().toLowerCase())
+                    .filter(Boolean);
+
+                if (!relTokens.includes("stylesheet") || !node.href) {
+                    continue;
+                }
+
+                descriptors.push({
+                    kind: "link" as const,
+                    href: node.getAttribute("href") || "",
+                    media: node.getAttribute("media") || undefined,
+                    attributes: Array.from(node.attributes).map((attribute) => ({
+                        name: attribute.name,
+                        value: attribute.value,
+                    })),
+                });
+                continue;
+            }
+
+            if (node instanceof HTMLStyleElement) {
+                descriptors.push({
+                    kind: "style" as const,
+                    content: node.textContent || "",
+                    media: node.getAttribute("media") || undefined,
+                });
+            }
+    }
+
+    return descriptors;
+}
+
 function extractInteractiveScripts(html: string): InteractiveScriptDescriptor[] {
     const sanitizedRoot = DOMPurify.sanitize(html, {
         WHOLE_DOCUMENT: true,
@@ -1246,6 +1321,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         const interactiveScripts = interactiveHtmlPreview
             ? extractInteractiveScripts(fileContent)
             : [];
+        const stylesheetDescriptors = extractStylesheetDescriptors(fileContent);
 
         (async () => {
             const sanitizedHtml = DOMPurify.sanitize(fileContent, {
@@ -1308,14 +1384,43 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
             baseEl.setAttribute("href", baseHref);
             injectPreviewCsp(doc, interactiveHtmlPreview);
 
-            // Inline linked stylesheets: <link rel="stylesheet" href="...">
-            const linkEls = Array.from(
-                doc.querySelectorAll('link[rel="stylesheet"][href]'),
-            );
-            for (const link of linkEls) {
-                const href = link.getAttribute("href")!;
-                const repoPath = normalizeRepoPath(dirPath, href);
+            for (const styleNode of Array.from(
+                doc.querySelectorAll('link[href], style'),
+            )) {
+                if (
+                    styleNode instanceof HTMLLinkElement &&
+                    !styleNode.rel
+                        .split(/\s+/)
+                        .map((token) => token.trim().toLowerCase())
+                        .includes("stylesheet")
+                ) {
+                    continue;
+                }
+
+                styleNode.remove();
+            }
+
+            const styleContainer = doc.head || doc.body || doc.documentElement;
+
+            for (const descriptor of stylesheetDescriptors) {
                 try {
+                    if (descriptor.kind === "style") {
+                        const style = doc.createElement("style");
+                        if (descriptor.media) {
+                            style.setAttribute("media", descriptor.media);
+                        }
+                        style.textContent = rewriteCssUrls(
+                            descriptor.content,
+                            owner,
+                            name,
+                            branch,
+                            dirPath,
+                        );
+                        styleContainer.append(style);
+                        continue;
+                    }
+
+                    const repoPath = normalizeRepoPath(dirPath, descriptor.href);
                     let css: string | null = null;
 
                     if (repoPath) {
@@ -1332,38 +1437,47 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                             repoPath.split("/").slice(0, -1).join("/"),
                         );
                     } else {
-                        const externalUrl = new URL(href, baseHref).toString();
+                        const externalUrl = new URL(
+                            descriptor.href,
+                            baseHref,
+                        ).toString();
                         const response = await fetch(externalUrl);
-                        if (!response.ok) {
-                            continue;
+                        if (response.ok) {
+                            css = rewriteCssUrlsAgainstBaseUrl(
+                                await response.text(),
+                                externalUrl,
+                            );
                         }
-                        css = rewriteCssUrlsAgainstBaseUrl(
-                            await response.text(),
-                            externalUrl,
-                        );
                     }
 
-                    if (cancelled || !css) return;
-                    const style = doc.createElement("style");
-                    const media = link.getAttribute("media");
-                    if (media) {
-                        style.setAttribute("media", media);
+                    if (cancelled) return;
+
+                    if (css) {
+                        const style = doc.createElement("style");
+                        if (descriptor.media) {
+                            style.setAttribute("media", descriptor.media);
+                        }
+                        style.textContent = css;
+                        styleContainer.append(style);
+                        continue;
                     }
-                    style.textContent = css;
-                    link.replaceWith(style);
+
+                    const link = doc.createElement("link");
+                    for (const attribute of descriptor.attributes) {
+                        link.setAttribute(attribute.name, attribute.value);
+                    }
+                    styleContainer.append(link);
                 } catch {
-                    /* keep external stylesheet link if fetch/inline fails */
-                }
-            }
+                    if (descriptor.kind !== "link") {
+                        continue;
+                    }
 
-            for (const styleEl of Array.from(doc.querySelectorAll("style"))) {
-                styleEl.textContent = rewriteCssUrls(
-                    styleEl.textContent || "",
-                    owner,
-                    name,
-                    branch,
-                    dirPath,
-                );
+                    const link = doc.createElement("link");
+                    for (const attribute of descriptor.attributes) {
+                        link.setAttribute(attribute.name, attribute.value);
+                    }
+                    styleContainer.append(link);
+                }
             }
 
             for (const element of Array.from(doc.querySelectorAll("[style]"))) {
