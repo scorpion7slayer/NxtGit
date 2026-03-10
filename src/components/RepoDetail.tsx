@@ -476,25 +476,58 @@ function injectPreviewCsp(doc: Document, interactive: boolean) {
     upsertMetaHttpEquiv(doc, "Content-Security-Policy", csp);
 }
 
+type InteractiveScriptDescriptor = {
+    attributes: Array<{ name: string; value: string }>;
+    content: string;
+};
+
+function extractInteractiveScripts(html: string): InteractiveScriptDescriptor[] {
+    const scripts: InteractiveScriptDescriptor[] = [];
+    const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+
+    for (const match of html.matchAll(scriptPattern)) {
+        const rawAttributes = match[1] ?? "";
+        const content = match[2] ?? "";
+        const attributes: Array<{ name: string; value: string }> = [];
+        const attributePattern =
+            /([^\s=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+
+        for (const attributeMatch of rawAttributes.matchAll(attributePattern)) {
+            const name = attributeMatch[1];
+            if (!name || /^on/i.test(name)) {
+                continue;
+            }
+
+            const value =
+                attributeMatch[2] ??
+                attributeMatch[3] ??
+                attributeMatch[4] ??
+                "";
+
+            attributes.push({ name, value });
+        }
+
+        scripts.push({ attributes, content });
+    }
+
+    return scripts;
+}
+
 function cloneInteractiveScripts(
-    sourceDoc: Document,
+    scripts: InteractiveScriptDescriptor[],
     targetDoc: Document,
     owner: string,
     name: string,
     branch: string,
     baseDir: string,
 ) {
-    const scripts = Array.from(sourceDoc.querySelectorAll("script"));
-
     for (const script of scripts) {
         const nextScript = targetDoc.createElement("script");
+        let hasSrc = false;
 
-        for (const attribute of Array.from(script.attributes)) {
-            if (/^on/i.test(attribute.name)) {
-                continue;
-            }
-
+        for (const attribute of script.attributes) {
             if (attribute.name === "src") {
+                hasSrc = true;
                 const rewritten = rewriteAssetReference(
                     attribute.value,
                     owner,
@@ -509,8 +542,8 @@ function cloneInteractiveScripts(
             nextScript.setAttribute(attribute.name, attribute.value);
         }
 
-        if (!script.src && script.textContent) {
-            nextScript.textContent = script.textContent;
+        if (!hasSrc && script.content) {
+            nextScript.textContent = script.content;
         }
 
         if (targetDoc.body) {
@@ -1171,7 +1204,9 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         }
         let cancelled = false;
         const dirPath = currentPath.split("/").slice(0, -1).join("/");
-        const sourceDoc = new DOMParser().parseFromString(fileContent, "text/html");
+        const interactiveScripts = interactiveHtmlPreview
+            ? extractInteractiveScripts(fileContent)
+            : [];
 
         (async () => {
             const sanitizedHtml = DOMPurify.sanitize(fileContent, {
@@ -1309,7 +1344,7 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
 
             if (interactiveHtmlPreview) {
                 cloneInteractiveScripts(
-                    sourceDoc,
+                    interactiveScripts,
                     doc,
                     owner,
                     name,
