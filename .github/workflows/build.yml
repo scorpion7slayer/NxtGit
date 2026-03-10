@@ -36,7 +36,7 @@ jobs:
               id: get-version
               shell: bash
               run: |
-                  VERSION=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | cut -d'"' -f4)
+                  VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
             - name: Setup Node.js
