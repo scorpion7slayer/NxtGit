@@ -1171,7 +1171,6 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         }
         let cancelled = false;
         const dirPath = currentPath.split("/").slice(0, -1).join("/");
-        const sourceDoc = new DOMParser().parseFromString(fileContent, "text/html");
 
         (async () => {
             const sanitizedHtml = DOMPurify.sanitize(fileContent, {
@@ -1199,6 +1198,53 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
             });
             const parser = new DOMParser();
             const doc = parser.parseFromString(sanitizedHtml, "text/html");
+            let interactiveSourceDoc: Document | null = null;
+
+            if (interactiveHtmlPreview) {
+                const sanitizedInteractiveHtml = DOMPurify.sanitize(fileContent, {
+                    WHOLE_DOCUMENT: true,
+                    ADD_TAGS: [
+                        "base",
+                        "body",
+                        "head",
+                        "html",
+                        "link",
+                        "meta",
+                        "script",
+                        "style",
+                        "title",
+                    ],
+                    ADD_ATTR: [
+                        "alt",
+                        "async",
+                        "charset",
+                        "class",
+                        "content",
+                        "crossorigin",
+                        "defer",
+                        "href",
+                        "http-equiv",
+                        "id",
+                        "integrity",
+                        "media",
+                        "name",
+                        "nomodule",
+                        "poster",
+                        "referrerpolicy",
+                        "rel",
+                        "sizes",
+                        "src",
+                        "srcset",
+                        "style",
+                        "type",
+                    ],
+                });
+
+                interactiveSourceDoc = parser.parseFromString(
+                    sanitizedInteractiveHtml,
+                    "text/html",
+                );
+            }
 
             for (const element of Array.from(doc.querySelectorAll("*"))) {
                 for (const attribute of Array.from(element.attributes)) {
@@ -1307,9 +1353,9 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                 }
             }
 
-            if (interactiveHtmlPreview) {
+            if (interactiveHtmlPreview && interactiveSourceDoc) {
                 cloneInteractiveScripts(
-                    sourceDoc,
+                    interactiveSourceDoc,
                     doc,
                     owner,
                     name,
