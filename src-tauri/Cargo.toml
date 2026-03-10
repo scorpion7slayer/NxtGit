@@ -1,6 +1,6 @@
 [package]
 name = "nxtgit"
-version = "1.0.4"
+version = "1.0.4-fix"
 description = "AI-native Git client for macOS"
 authors = ["scorpion7slayer"]
 edition = "2021"

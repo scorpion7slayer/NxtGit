@@ -1027,12 +1027,14 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         (async () => {
             const sanitizedHtml = DOMPurify.sanitize(fileContent, {
                 WHOLE_DOCUMENT: true,
-                ADD_TAGS: ["style"],
+                ADD_TAGS: ["base", "body", "head", "html", "link", "meta", "style", "title"],
                 ADD_ATTR: [
                     "alt",
+                    "charset",
                     "class",
                     "content",
                     "href",
+                    "http-equiv",
                     "id",
                     "media",
                     "name",

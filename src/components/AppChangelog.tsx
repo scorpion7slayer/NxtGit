@@ -13,12 +13,13 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
-    version: '1.0.4',
+    version: '1.0.4-fix',
     date: 'March 2026',
     changes: [
       { type: 'fix', text: 'Fixed HTML preview in packaged builds by switching the preview iframe to a blob URL flow' },
       { type: 'fix', text: 'Adjusted regional flags to use native emoji on macOS and a built-in fallback on platforms with poor flag emoji support' },
       { type: 'improvement', text: 'Hardened HTML preview sanitization to avoid executing repository JavaScript inside the app' },
+      { type: 'fix', text: 'Restored stylesheet loading in the packaged HTML preview after preserving document head and link tags during sanitization' },
     ],
   },
   {

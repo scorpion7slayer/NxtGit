@@ -1,7 +1,7 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "NxtGit",
-    "version": "1.0.4",
+    "version": "1.0.4-fix",
     "identifier": "com.scorpion7slayer.nxtgit",
     "build": {
         "beforeDevCommand": "npm run dev",
