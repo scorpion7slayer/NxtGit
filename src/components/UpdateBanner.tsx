@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Download, Loader2, RefreshCw, X } from "lucide-react";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { open } from "@tauri-apps/plugin-shell";
 import {
     formatUpdaterError,
     getAvailableAppUpdate,
+    getUpdateReleaseUrl,
     installAppUpdate,
     type AvailableAppUpdate,
 } from "../lib/updater";
@@ -157,6 +159,18 @@ const UpdateBanner: React.FC = () => {
                     <RefreshCw className="w-3.5 h-3.5" />
                     Later
                 </button>
+                {error && (
+                    <button
+                        type="button"
+                        onClick={() =>
+                            open(getUpdateReleaseUrl(availableUpdate.version))
+                        }
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 macos-drag-bar-nodrag"
+                    >
+                        <Download className="w-3.5 h-3.5" />
+                        Open release
+                    </button>
+                )}
             </div>
         </div>
     );

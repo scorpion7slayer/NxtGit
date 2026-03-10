@@ -125,6 +125,10 @@ export async function installAppUpdate(
     await update.downloadAndInstall(onEvent);
 }
 
+export function getUpdateReleaseUrl(version: string): string {
+    return `https://github.com/scorpion7slayer/NxtGit/releases/tag/v${version}`;
+}
+
 export function formatUpdaterError(error: unknown): string {
     const message = extractErrorMessage(error);
 
@@ -138,6 +142,10 @@ export function formatUpdaterError(error: unknown): string {
 
     if (message.includes("not allowed") || message.includes("forbidden")) {
         return "Updater blocked by Tauri permissions.";
+    }
+
+    if (message.includes("Download request failed with status: 500")) {
+        return "GitHub release asset download failed with HTTP 500. The release exists, but the in-app updater could not fetch the asset. Use the release page fallback below.";
     }
 
     return message;

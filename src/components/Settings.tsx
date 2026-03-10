@@ -30,6 +30,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import {
     formatUpdaterError,
     getAvailableAppUpdate,
+    getUpdateReleaseUrl,
     installAppUpdate,
     type AvailableAppUpdate,
 } from "../lib/updater";
@@ -696,25 +697,46 @@ const Settings: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2 ml-3">
                                 {updateAvailable ? (
-                                    <button
-                                        onClick={installUpdate}
-                                        disabled={updateDownloading}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                                        style={{
-                                            background: "var(--accent)",
-                                            color: "#fff",
-                                            opacity: updateDownloading ? 0.6 : 1,
-                                        }}
-                                    >
-                                        {updateDownloading ? (
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        ) : (
-                                            <Download className="w-3.5 h-3.5" />
+                                    <>
+                                        <button
+                                            onClick={installUpdate}
+                                            disabled={updateDownloading}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                            style={{
+                                                background: "var(--accent)",
+                                                color: "#fff",
+                                                opacity: updateDownloading ? 0.6 : 1,
+                                            }}
+                                        >
+                                            {updateDownloading ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                                <Download className="w-3.5 h-3.5" />
+                                            )}
+                                            {updateDownloading
+                                                ? "Installing..."
+                                                : "Install update"}
+                                        </button>
+                                        {updateError && (
+                                            <button
+                                                onClick={() =>
+                                                    open(
+                                                        getUpdateReleaseUrl(
+                                                            updateAvailable.version,
+                                                        ),
+                                                    )
+                                                }
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
+                                                style={{
+                                                    borderColor: "var(--border)",
+                                                    color: "var(--text-secondary)",
+                                                }}
+                                            >
+                                                <Download className="w-3.5 h-3.5" />
+                                                Open release
+                                            </button>
                                         )}
-                                        {updateDownloading
-                                            ? "Installing..."
-                                            : "Install update"}
-                                    </button>
+                                    </>
                                 ) : (
                                     <button
                                         onClick={checkForUpdate}
