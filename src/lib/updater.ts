@@ -14,7 +14,11 @@ export interface AvailableAppUpdate {
 
 export async function getAvailableAppUpdate(): Promise<AvailableAppUpdate | null> {
     const currentVersion = await getVersion();
-    const update = await check();
+    let update = await check();
+
+    if (!update) {
+        update = await getRelaxedFixUpdate(currentVersion);
+    }
 
     if (!update) {
         return null;
@@ -26,6 +30,92 @@ export async function getAvailableAppUpdate(): Promise<AvailableAppUpdate | null
         version: update.version,
         body: update.body || "",
     };
+}
+
+async function getRelaxedFixUpdate(currentVersion: string): Promise<Update | null> {
+    const candidate = await check({ allowDowngrades: true });
+
+    if (!candidate) {
+        return null;
+    }
+
+    if (isSupportedRelaxedUpdate(currentVersion, candidate.version)) {
+        return candidate;
+    }
+
+    await candidate.close().catch(() => {});
+    return null;
+}
+
+function isSupportedRelaxedUpdate(
+    currentVersion: string,
+    candidateVersion: string,
+): boolean {
+    const current = parseVersion(currentVersion);
+    const candidate = parseVersion(candidateVersion);
+    const coreComparison = compareCoreVersions(candidate.core, current.core);
+
+    if (coreComparison > 0) {
+        return true;
+    }
+
+    if (coreComparison < 0) {
+        return false;
+    }
+
+    const candidateFixLevel = parseFixLevel(candidate.suffix);
+    if (candidateFixLevel === null) {
+        return false;
+    }
+
+    const currentFixLevel = parseFixLevel(current.suffix) ?? 0;
+    return candidateFixLevel > currentFixLevel;
+}
+
+function parseVersion(version: string): { core: number[]; suffix: string } {
+    const normalized = version.trim().replace(/^v/i, "");
+    const [corePart, ...suffixParts] = normalized.split("-");
+    const core = corePart.split(".").map((segment) => {
+        const value = Number.parseInt(segment, 10);
+        return Number.isFinite(value) ? value : 0;
+    });
+
+    return {
+        core,
+        suffix: suffixParts.join("-").toLowerCase(),
+    };
+}
+
+function compareCoreVersions(left: number[], right: number[]): number {
+    const length = Math.max(left.length, right.length);
+
+    for (let index = 0; index < length; index += 1) {
+        const leftValue = left[index] ?? 0;
+        const rightValue = right[index] ?? 0;
+
+        if (leftValue > rightValue) {
+            return 1;
+        }
+
+        if (leftValue < rightValue) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+function parseFixLevel(suffix: string): number | null {
+    if (!suffix) {
+        return null;
+    }
+
+    const match = suffix.match(/^fix(?:[.-]?(\d+))?$/i);
+    if (!match) {
+        return null;
+    }
+
+    return Number.parseInt(match[1] ?? "1", 10);
 }
 
 export async function installAppUpdate(

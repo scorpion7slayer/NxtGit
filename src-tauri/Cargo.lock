@@ -2225,7 +2225,7 @@ dependencies = [
 
 [[package]]
 name = "nxtgit"
-version = "1.0.4-fix"
+version = "1.0.5"
 dependencies = [
  "cocoa",
  "objc",

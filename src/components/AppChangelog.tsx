@@ -13,6 +13,13 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.5',
+    date: 'March 2026',
+    changes: [
+      { type: 'fix', text: 'Added updater fallback logic so builds on 1.0.4 can detect and install 1.0.4-fix releases' },
+    ],
+  },
+  {
     version: '1.0.4-fix',
     date: 'March 2026',
     changes: [

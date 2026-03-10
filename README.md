@@ -41,6 +41,10 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 ## Latest Release Notes
 
+### v1.0.5
+
+- Fix: added updater fallback logic so apps on `1.0.4` can detect and install `1.0.4-fix` releases
+
 ### v1.0.4-fix
 
 - Fix: restored HTML preview in packaged builds
