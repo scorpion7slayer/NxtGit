@@ -482,35 +482,32 @@ type InteractiveScriptDescriptor = {
 };
 
 function extractInteractiveScripts(html: string): InteractiveScriptDescriptor[] {
-    const scripts: InteractiveScriptDescriptor[] = [];
-    const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+    const sanitizedRoot = DOMPurify.sanitize(html, {
+        WHOLE_DOCUMENT: true,
+        RETURN_DOM: true,
+        ALLOWED_TAGS: ["body", "head", "html", "script"],
+        ALLOWED_ATTR: [
+            "async",
+            "crossorigin",
+            "defer",
+            "integrity",
+            "nomodule",
+            "nonce",
+            "referrerpolicy",
+            "src",
+            "type",
+        ],
+    }) as HTMLElement;
 
-    for (const match of html.matchAll(scriptPattern)) {
-        const rawAttributes = match[1] ?? "";
-        const content = match[2] ?? "";
-        const attributes: Array<{ name: string; value: string }> = [];
-        const attributePattern =
-            /([^\s=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
-
-        for (const attributeMatch of rawAttributes.matchAll(attributePattern)) {
-            const name = attributeMatch[1];
-            if (!name || /^on/i.test(name)) {
-                continue;
-            }
-
-            const value =
-                attributeMatch[2] ??
-                attributeMatch[3] ??
-                attributeMatch[4] ??
-                "";
-
-            attributes.push({ name, value });
-        }
-
-        scripts.push({ attributes, content });
-    }
-
-    return scripts;
+    return Array.from(
+        sanitizedRoot.querySelectorAll("script"),
+    ).map((script) => ({
+        attributes: Array.from(script.attributes).map((attribute) => ({
+            name: attribute.name,
+            value: attribute.value,
+        })),
+        content: script.textContent || "",
+    }));
 }
 
 function cloneInteractiveScripts(
