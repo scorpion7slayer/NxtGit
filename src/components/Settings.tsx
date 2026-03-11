@@ -8,6 +8,8 @@ import {
     Copy,
     Download,
     RefreshCw,
+    Keyboard,
+    RotateCcw,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import {
@@ -22,6 +24,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import {
     fetchSubscription,
+    clearGitHubCache,
     type GitHubSubscription,
 } from "../lib/github";
 import { LazyStore } from "@tauri-apps/plugin-store";
@@ -35,6 +38,17 @@ import {
     type AvailableAppUpdate,
 } from "../lib/updater";
 import { APP_FALLBACK_VERSION } from "../lib/appMeta";
+import {
+    DEFAULT_KEYBOARD_SHORTCUTS,
+    SETTINGS_UPDATED_EVENT,
+    SHORTCUT_DEFINITIONS,
+    formatShortcutLabel,
+    loadAppPreferences,
+    saveAppPreferences,
+    shortcutFromKeyboardEvent,
+    type ShortcutId,
+    type ShortcutMap,
+} from "../lib/preferences";
 
 const settingsStore = new LazyStore("settings.json");
 
@@ -45,7 +59,15 @@ const Settings: React.FC = () => {
     const [ollamaURL, setOllamaURL] = useState("http://localhost:11434");
     const [notifications, setNotifications] = useState(true);
     const [autoReview, setAutoReview] = useState(false);
+    const [keyboardShortcuts, setKeyboardShortcuts] = useState<ShortcutMap>(
+        DEFAULT_KEYBOARD_SHORTCUTS,
+    );
     const [savedMsg, setSavedMsg] = useState("");
+    const [preferenceSavedMsg, setPreferenceSavedMsg] = useState("");
+    const [clearingCache, setClearingCache] = useState(false);
+    const [editingShortcutId, setEditingShortcutId] = useState<ShortcutId | null>(
+        null,
+    );
     const [subscription, setSubscription] = useState<GitHubSubscription | null>(
         null,
     );
@@ -152,12 +174,70 @@ const Settings: React.FC = () => {
             .catch(() => {});
 
         getOllamaBaseURL().then(setOllamaURL).catch(() => {});
+        loadAppPreferences()
+            .then((preferences) => {
+                setNotifications(preferences.notifications);
+                setAutoReview(preferences.autoReview);
+                setKeyboardShortcuts(preferences.keyboardShortcuts);
+            })
+            .catch(() => {});
 
         getVersion().then(setAppVersion).catch(() => {});
 
         fetchSubscription().then(setSubscription).catch(() => {})
             .finally(() => setSubLoading(false));
     }, []);
+
+    useEffect(() => {
+        document.body.dataset.shortcutRecording = editingShortcutId ? "true" : "false";
+        return () => {
+            delete document.body.dataset.shortcutRecording;
+        };
+    }, [editingShortcutId]);
+
+    useEffect(() => {
+        if (!editingShortcutId) {
+            return;
+        }
+
+        const handleShortcutRecording = async (event: KeyboardEvent) => {
+            if (event.repeat) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (event.key === "Escape") {
+                setEditingShortcutId(null);
+                return;
+            }
+
+            const nextShortcut = shortcutFromKeyboardEvent(event);
+            if (!nextShortcut) {
+                return;
+            }
+
+            const nextShortcuts = {
+                ...keyboardShortcuts,
+                [editingShortcutId]: nextShortcut,
+            };
+            setKeyboardShortcuts(nextShortcuts);
+            await saveAppPreferences({
+                notifications,
+                autoReview,
+                keyboardShortcuts: nextShortcuts,
+            });
+            setPreferenceSavedMsg("Shortcut updated");
+            setTimeout(() => setPreferenceSavedMsg(""), 2000);
+            setEditingShortcutId(null);
+        };
+
+        window.addEventListener("keydown", handleShortcutRecording, true);
+        return () => {
+            window.removeEventListener("keydown", handleShortcutRecording, true);
+        };
+    }, [autoReview, editingShortcutId, keyboardShortcuts, notifications]);
 
     const connectCopilot = async () => {
         setCopilotConnecting(true);
@@ -209,6 +289,41 @@ const Settings: React.FC = () => {
         await setOllamaBaseURL(ollamaURL);
         setSavedMsg("Saved");
         setTimeout(() => setSavedMsg(""), 2000);
+    };
+
+    const savePreferences = async () => {
+        await saveAppPreferences({
+            notifications,
+            autoReview,
+            keyboardShortcuts,
+        });
+        setPreferenceSavedMsg("Saved");
+        setTimeout(() => setPreferenceSavedMsg(""), 2000);
+    };
+
+    const clearCache = async () => {
+        setClearingCache(true);
+        try {
+            await clearGitHubCache();
+            window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
+            setPreferenceSavedMsg("Cache cleared");
+            setTimeout(() => setPreferenceSavedMsg(""), 2000);
+        } finally {
+            setClearingCache(false);
+        }
+    };
+
+    const resetShortcuts = () => {
+        const nextShortcuts = { ...DEFAULT_KEYBOARD_SHORTCUTS };
+        setKeyboardShortcuts(nextShortcuts);
+        setEditingShortcutId(null);
+        void saveAppPreferences({
+            notifications,
+            autoReview,
+            keyboardShortcuts: nextShortcuts,
+        });
+        setPreferenceSavedMsg("Defaults restored");
+        setTimeout(() => setPreferenceSavedMsg(""), 2000);
     };
 
     // Providers that need API keys (exclude OAuth-based ones)
@@ -626,19 +741,145 @@ const Settings: React.FC = () => {
 
                 {/* Preferences */}
                 <Section title="Preferences">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         <ToggleRow
                             label="Push Notifications"
                             description="Get notified about PR reviews and comments"
                             checked={notifications}
-                            onChange={setNotifications}
+                            onChange={(value) => {
+                                setNotifications(value);
+                                void saveAppPreferences({
+                                    notifications: value,
+                                    autoReview,
+                                    keyboardShortcuts,
+                                });
+                            }}
                         />
                         <ToggleRow
                             label="Auto-review PRs"
                             description="Automatically review new pull requests with AI"
                             checked={autoReview}
-                            onChange={setAutoReview}
+                            onChange={(value) => {
+                                setAutoReview(value);
+                                void saveAppPreferences({
+                                    notifications,
+                                    autoReview: value,
+                                    keyboardShortcuts,
+                                });
+                            }}
                         />
+                        <div
+                            className="p-3 rounded-lg"
+                            style={{ background: "var(--bg-tertiary)" }}
+                        >
+                            <div className="flex items-center justify-between mb-3 gap-3">
+                                <div>
+                                    <p
+                                        className="text-sm"
+                                        style={{ color: "var(--text-primary)" }}
+                                    >
+                                        Keyboard shortcuts
+                                    </p>
+                                    <p
+                                        className="text-xs"
+                                        style={{ color: "var(--text-tertiary)" }}
+                                    >
+                                        Click a shortcut, then press the new keys. Changes are saved immediately.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={resetShortcuts}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
+                                    style={{
+                                        borderColor: "var(--border)",
+                                        color: "var(--text-secondary)",
+                                    }}
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    Reset defaults
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {SHORTCUT_DEFINITIONS.map((shortcut) => {
+                                    const isRecording =
+                                        editingShortcutId === shortcut.id;
+                                    return (
+                                        <div
+                                            key={shortcut.id}
+                                            className="flex items-center justify-between gap-3 p-3 rounded-lg"
+                                            style={{
+                                                background: "var(--bg-secondary)",
+                                            }}
+                                        >
+                                            <div className="min-w-0">
+                                                <p
+                                                    className="text-sm"
+                                                    style={{
+                                                        color: "var(--text-primary)",
+                                                    }}
+                                                >
+                                                    {shortcut.label}
+                                                </p>
+                                                <p
+                                                    className="text-xs"
+                                                    style={{
+                                                        color: "var(--text-tertiary)",
+                                                    }}
+                                                >
+                                                    {shortcut.description}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() =>
+                                                    setEditingShortcutId(
+                                                        isRecording
+                                                            ? null
+                                                            : shortcut.id,
+                                                    )
+                                                }
+                                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border min-w-[152px] justify-center"
+                                                style={{
+                                                    borderColor: isRecording
+                                                        ? "var(--accent)"
+                                                        : "var(--border)",
+                                                    color: isRecording
+                                                        ? "var(--accent)"
+                                                        : "var(--text-secondary)",
+                                                    background: isRecording
+                                                        ? "rgba(0, 122, 255, 0.08)"
+                                                        : "transparent",
+                                                }}
+                                            >
+                                                <Keyboard className="w-3.5 h-3.5" />
+                                                {isRecording
+                                                    ? "Press keys (Esc to cancel)"
+                                                    : formatShortcutLabel(
+                                                          keyboardShortcuts[
+                                                              shortcut.id
+                                                          ],
+                                                      )}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={savePreferences}
+                                className="btn-secondary text-sm px-4 py-2"
+                            >
+                                Save again
+                            </button>
+                            {preferenceSavedMsg && (
+                                <span
+                                    className="text-xs"
+                                    style={{ color: "var(--success)" }}
+                                >
+                                    {preferenceSavedMsg}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </Section>
 
@@ -765,12 +1006,20 @@ const Settings: React.FC = () => {
                 <Section title="Data">
                     <div className="space-y-2">
                         <button
+                            onClick={clearCache}
+                            disabled={clearingCache}
                             className="w-full flex items-center justify-between p-3 rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
                             style={{ background: "var(--bg-tertiary)" }}
                         >
                             <span style={{ color: "var(--text-primary)" }}>
-                                Clear cache
+                                {clearingCache ? "Clearing cache..." : "Clear cache"}
                             </span>
+                            {clearingCache && (
+                                <Loader2
+                                    className="w-4 h-4 animate-spin"
+                                    style={{ color: "var(--text-tertiary)" }}
+                                />
+                            )}
                         </button>
                         <button
                             className="w-full flex items-center justify-between p-3 rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors"

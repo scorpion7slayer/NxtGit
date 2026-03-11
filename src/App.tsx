@@ -21,6 +21,7 @@ import WorkflowRunDetail from "./components/WorkflowRunDetail";
 import Notifications from "./components/Notifications";
 import CodeWiki from "./components/CodeWiki";
 import WindowDragRegion from "./components/WindowDragRegion";
+import AppKeyboardShortcuts from "./components/AppKeyboardShortcuts";
 import { useAuthStore } from "./stores/authStore";
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
 
     return (
         <Layout>
+            <AppKeyboardShortcuts />
             <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/repos" element={<Repositories />} />

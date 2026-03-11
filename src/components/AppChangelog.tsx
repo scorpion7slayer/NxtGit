@@ -13,12 +13,13 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
-    version: '1.0.7-fix',
+    version: '1.0.8',
     date: 'March 2026',
     changes: [
-      { type: 'fix', text: 'Restored CDN stylesheet loading in HTML preview, including Bootstrap and other external CSS links' },
-      { type: 'fix', text: 'Rebuilt HTML preview styles from the source document so stylesheet links and inline styles render reliably again' },
-      { type: 'fix', text: 'Added a safer external stylesheet fallback by inlining remote CDN CSS during HTML preview rendering' },
+      { type: 'feature', text: 'Added customizable keyboard shortcuts for the main app navigation from Settings' },
+      { type: 'feature', text: 'Added persistent offline caching for repositories, repo data, workflow runs, notifications, and GitHub status' },
+      { type: 'feature', text: 'Replaced fragile in-app HTML runtime preview with a GitHub Pages creation, open, rebuild, and disable flow' },
+      { type: 'improvement', text: 'HTML preview now shows the exact website or GitHub Pages URL before opening it' },
     ],
   },
   {

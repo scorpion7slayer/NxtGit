@@ -1,8 +1,18 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { useAuthStore } from "../stores/authStore";
 import { APP_USER_AGENT } from "./appMeta";
+import {
+    clearCachedValuesByPrefix,
+    getCachedValue,
+    getStaleCachedValue,
+    setCachedValue,
+} from "./cache";
 
 const API = "https://api.github.com";
+const GITHUB_CACHE_PREFIX = "github:";
+const CACHE_TTL_SHORT = 60_000;
+const CACHE_TTL_MEDIUM = 5 * 60_000;
+const CACHE_TTL_LONG = 15 * 60_000;
 
 async function ghFetch<T>(path: string): Promise<T> {
     const token = useAuthStore.getState().token;
@@ -38,6 +48,39 @@ async function ghFetchRaw(path: string): Promise<string> {
     }
 
     return response.text();
+}
+
+function buildGitHubCacheKey(key: string): string {
+    const login = useAuthStore.getState().user?.login || "anonymous";
+    return `${GITHUB_CACHE_PREFIX}${login}:${key}`;
+}
+
+async function fetchWithCache<T>(
+    key: string,
+    ttlMs: number,
+    loader: () => Promise<T>,
+): Promise<T> {
+    const cacheKey = buildGitHubCacheKey(key);
+    const cached = await getCachedValue<T>(cacheKey, ttlMs);
+    if (cached !== null) {
+        return cached;
+    }
+
+    try {
+        const value = await loader();
+        await setCachedValue(cacheKey, value);
+        return value;
+    } catch (error) {
+        const stale = await getStaleCachedValue<T>(cacheKey);
+        if (stale !== null) {
+            return stale;
+        }
+        throw error;
+    }
+}
+
+export async function clearGitHubCache(): Promise<void> {
+    await clearCachedValuesByPrefix(GITHUB_CACHE_PREFIX);
 }
 
 // --- Types ---
@@ -204,16 +247,26 @@ export interface GitHubSubscription {
 // --- Fetchers ---
 
 export async function fetchRepos(): Promise<GitHubRepo[]> {
-    return ghFetch<GitHubRepo[]>(
-        "/user/repos?sort=updated&per_page=50&affiliation=owner,collaborator",
+    return fetchWithCache(
+        "repos:list",
+        CACHE_TTL_MEDIUM,
+        () =>
+            ghFetch<GitHubRepo[]>(
+                "/user/repos?sort=updated&per_page=50&affiliation=owner,collaborator",
+            ),
     );
 }
 
 export async function fetchUserPRs(): Promise<GitHubPR[]> {
     const login = useAuthStore.getState().user?.login;
     if (!login) return [];
-    const result = await ghFetch<{ items: GitHubPR[] }>(
-        `/search/issues?q=is:pr+author:${login}+sort:updated&per_page=30`,
+    const result = await fetchWithCache(
+        `prs:user:${login}`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<{ items: GitHubPR[] }>(
+                `/search/issues?q=is:pr+author:${login}+sort:updated&per_page=30`,
+            ),
     );
     return result.items || [];
 }
@@ -221,12 +274,21 @@ export async function fetchUserPRs(): Promise<GitHubPR[]> {
 export async function fetchEvents(): Promise<GitHubEvent[]> {
     const login = useAuthStore.getState().user?.login;
     if (!login) return [];
-    return ghFetch<GitHubEvent[]>(`/users/${login}/events?per_page=30`);
+    return fetchWithCache(
+        `events:${login}`,
+        CACHE_TTL_SHORT,
+        () => ghFetch<GitHubEvent[]>(`/users/${login}/events?per_page=30`),
+    );
 }
 
 export async function fetchStarCount(): Promise<number> {
-    const repos = await ghFetch<GitHubRepo[]>(
-        "/user/repos?per_page=100&affiliation=owner",
+    const repos = await fetchWithCache(
+        "repos:stars",
+        CACHE_TTL_MEDIUM,
+        () =>
+            ghFetch<GitHubRepo[]>(
+                "/user/repos?per_page=100&affiliation=owner",
+            ),
     );
     return repos.reduce((sum, r) => sum + r.stargazers_count, 0);
 }
@@ -278,8 +340,13 @@ export async function fetchSubscription(): Promise<GitHubSubscription> {
 }
 
 export async function fetchUserIssues(): Promise<GitHubIssue[]> {
-    return ghFetch<GitHubIssue[]>(
-        "/user/issues?filter=all&state=all&per_page=50&sort=updated",
+    return fetchWithCache(
+        "issues:user",
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubIssue[]>(
+                "/user/issues?filter=all&state=all&per_page=50&sort=updated",
+            ),
     );
 }
 
@@ -287,7 +354,11 @@ export async function fetchRepoDetail(
     owner: string,
     name: string,
 ): Promise<GitHubRepo> {
-    return ghFetch<GitHubRepo>(`/repos/${owner}/${name}`);
+    return fetchWithCache(
+        `repo:${owner}/${name}:detail`,
+        CACHE_TTL_MEDIUM,
+        () => ghFetch<GitHubRepo>(`/repos/${owner}/${name}`),
+    );
 }
 
 export async function fetchRepoContents(
@@ -297,8 +368,13 @@ export async function fetchRepoContents(
     ref?: string,
 ): Promise<GitHubContent[]> {
     const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
-    return ghFetch<GitHubContent[]>(
-        `/repos/${owner}/${name}/contents/${path}${q}`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:contents:${ref ?? "default"}:${path || "."}`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubContent[]>(
+                `/repos/${owner}/${name}/contents/${path}${q}`,
+            ),
     );
 }
 
@@ -309,7 +385,11 @@ export async function fetchFileContent(
     ref?: string,
 ): Promise<string> {
     const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
-    return ghFetchRaw(`/repos/${owner}/${name}/contents/${path}${q}`);
+    return fetchWithCache(
+        `repo:${owner}/${name}:file:${ref ?? "default"}:${path}`,
+        CACHE_TTL_SHORT,
+        () => ghFetchRaw(`/repos/${owner}/${name}/contents/${path}${q}`),
+    );
 }
 
 export interface TreeEntry {
@@ -323,8 +403,13 @@ export async function fetchRepoTree(
     name: string,
     branch: string = "HEAD",
 ): Promise<TreeEntry[]> {
-    const data = await ghFetch<{ tree: TreeEntry[]; truncated: boolean }>(
-        `/repos/${owner}/${name}/git/trees/${branch}?recursive=1`,
+    const data = await fetchWithCache(
+        `repo:${owner}/${name}:tree:${branch}`,
+        CACHE_TTL_MEDIUM,
+        () =>
+            ghFetch<{ tree: TreeEntry[]; truncated: boolean }>(
+                `/repos/${owner}/${name}/git/trees/${branch}?recursive=1`,
+            ),
     );
     return data.tree;
 }
@@ -333,8 +418,13 @@ export async function fetchRepoIssues(
     owner: string,
     name: string,
 ): Promise<GitHubIssue[]> {
-    return ghFetch<GitHubIssue[]>(
-        `/repos/${owner}/${name}/issues?state=all&per_page=50&sort=updated`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:issues`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubIssue[]>(
+                `/repos/${owner}/${name}/issues?state=all&per_page=50&sort=updated`,
+            ),
     );
 }
 
@@ -342,8 +432,13 @@ export async function fetchRepoPRs(
     owner: string,
     name: string,
 ): Promise<GitHubRepoPR[]> {
-    return ghFetch<GitHubRepoPR[]>(
-        `/repos/${owner}/${name}/pulls?state=all&per_page=50&sort=updated`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:prs`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubRepoPR[]>(
+                `/repos/${owner}/${name}/pulls?state=all&per_page=50&sort=updated`,
+            ),
     );
 }
 
@@ -353,8 +448,13 @@ export async function fetchRepoCommits(
     sha?: string,
 ): Promise<GitHubCommit[]> {
     const branch = sha ? `&sha=${sha}` : "";
-    return ghFetch<GitHubCommit[]>(
-        `/repos/${owner}/${name}/commits?per_page=30${branch}`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:commits:${sha ?? "default"}`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubCommit[]>(
+                `/repos/${owner}/${name}/commits?per_page=30${branch}`,
+            ),
     );
 }
 
@@ -363,7 +463,11 @@ export async function fetchIssueDetail(
     name: string,
     number: number,
 ): Promise<GitHubIssue> {
-    return ghFetch<GitHubIssue>(`/repos/${owner}/${name}/issues/${number}`);
+    return fetchWithCache(
+        `repo:${owner}/${name}:issue:${number}`,
+        CACHE_TTL_SHORT,
+        () => ghFetch<GitHubIssue>(`/repos/${owner}/${name}/issues/${number}`),
+    );
 }
 
 export async function fetchIssueComments(
@@ -371,8 +475,13 @@ export async function fetchIssueComments(
     name: string,
     number: number,
 ): Promise<GitHubComment[]> {
-    return ghFetch<GitHubComment[]>(
-        `/repos/${owner}/${name}/issues/${number}/comments?per_page=50`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:issue:${number}:comments`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubComment[]>(
+                `/repos/${owner}/${name}/issues/${number}/comments?per_page=50`,
+            ),
     );
 }
 
@@ -381,7 +490,11 @@ export async function fetchPRDetail(
     name: string,
     number: number,
 ): Promise<GitHubPRDetail> {
-    return ghFetch<GitHubPRDetail>(`/repos/${owner}/${name}/pulls/${number}`);
+    return fetchWithCache(
+        `repo:${owner}/${name}:pr:${number}`,
+        CACHE_TTL_SHORT,
+        () => ghFetch<GitHubPRDetail>(`/repos/${owner}/${name}/pulls/${number}`),
+    );
 }
 
 export async function fetchPRFiles(
@@ -389,8 +502,13 @@ export async function fetchPRFiles(
     name: string,
     number: number,
 ): Promise<GitHubPRFile[]> {
-    return ghFetch<GitHubPRFile[]>(
-        `/repos/${owner}/${name}/pulls/${number}/files`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:pr:${number}:files`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubPRFile[]>(
+                `/repos/${owner}/${name}/pulls/${number}/files`,
+            ),
     );
 }
 
@@ -603,8 +721,13 @@ export async function fetchRepoBranches(
     owner: string,
     name: string,
 ): Promise<GitHubBranch[]> {
-    return ghFetch<GitHubBranch[]>(
-        `/repos/${owner}/${name}/branches?per_page=100`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:branches`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubBranch[]>(
+                `/repos/${owner}/${name}/branches?per_page=100`,
+            ),
     );
 }
 
@@ -745,8 +868,13 @@ export async function fetchWorkflowRuns(
     owner: string,
     name: string,
 ): Promise<GitHubWorkflowRun[]> {
-    const data = await ghFetch<{ workflow_runs: GitHubWorkflowRun[] }>(
-        `/repos/${owner}/${name}/actions/runs?per_page=20`,
+    const data = await fetchWithCache(
+        `repo:${owner}/${name}:workflow-runs`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<{ workflow_runs: GitHubWorkflowRun[] }>(
+                `/repos/${owner}/${name}/actions/runs?per_page=20`,
+            ),
     );
     return data.workflow_runs || [];
 }
@@ -770,43 +898,60 @@ export async function searchUsers(
 export async function fetchUserProfile(
     username: string,
 ): Promise<GitHubUserProfile> {
-    return ghFetch<GitHubUserProfile>(`/users/${username}`);
+    return fetchWithCache(
+        `user:${username}:profile`,
+        CACHE_TTL_MEDIUM,
+        () => ghFetch<GitHubUserProfile>(`/users/${username}`),
+    );
 }
 
 export async function fetchUserRepos(
     username: string,
 ): Promise<GitHubRepo[]> {
-    return ghFetch<GitHubRepo[]>(
-        `/users/${username}/repos?sort=updated&per_page=30`,
+    return fetchWithCache(
+        `user:${username}:repos`,
+        CACHE_TTL_MEDIUM,
+        () =>
+            ghFetch<GitHubRepo[]>(
+                `/users/${username}/repos?sort=updated&per_page=30`,
+            ),
     );
 }
 
 export async function fetchGitHubChangelog(): Promise<GitHubChangelogEntry[]> {
-    const response = await fetch("https://github.blog/changelog/feed/", {
-        method: "GET",
-        headers: { "User-Agent": APP_USER_AGENT, Accept: "application/rss+xml" },
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const xml = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xml, "text/xml");
-    const items = doc.getElementsByTagName("item");
-    const entries: GitHubChangelogEntry[] = [];
-    for (let i = 0; i < items.length && i < 10; i++) {
-        const item = items[i];
-        const getText = (tag: string) =>
-            item.getElementsByTagName(tag)[0]?.textContent?.trim() || "";
-        const contentEncoded = item.getElementsByTagNameNS("http://purl.org/rss/1.0/modules/content/", "encoded")[0]?.textContent?.trim() || "";
-        const descHtml = item.getElementsByTagName("description")[0]?.textContent?.trim() || "";
-        entries.push({
-            title: getText("title"),
-            link: getText("link"),
-            pubDate: getText("pubDate"),
-            description: descHtml,
-            contentHtml: contentEncoded || descHtml,
+    return fetchWithCache("github:changelog", CACHE_TTL_LONG, async () => {
+        const response = await fetch("https://github.blog/changelog/feed/", {
+            method: "GET",
+            headers: { "User-Agent": APP_USER_AGENT, Accept: "application/rss+xml" },
         });
-    }
-    return entries;
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const xml = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, "text/xml");
+        const items = doc.getElementsByTagName("item");
+        const entries: GitHubChangelogEntry[] = [];
+        for (let i = 0; i < items.length && i < 10; i++) {
+            const item = items[i];
+            const getText = (tag: string) =>
+                item.getElementsByTagName(tag)[0]?.textContent?.trim() || "";
+            const contentEncoded =
+                item.getElementsByTagNameNS(
+                    "http://purl.org/rss/1.0/modules/content/",
+                    "encoded",
+                )[0]?.textContent?.trim() || "";
+            const descHtml =
+                item.getElementsByTagName("description")[0]?.textContent?.trim() ||
+                "";
+            entries.push({
+                title: getText("title"),
+                link: getText("link"),
+                pubDate: getText("pubDate"),
+                description: descHtml,
+                contentHtml: contentEncoded || descHtml,
+            });
+        }
+        return entries;
+    });
 }
 
 export interface GitHubRelease {
@@ -890,21 +1035,179 @@ export interface GitHubBranch {
     commit: { sha: string };
 }
 
+export interface GitHubPagesSite {
+    status: string;
+    html_url: string;
+    cname: string | null;
+    https_enforced: boolean;
+    public: boolean;
+    source: {
+        branch: string;
+        path: "/" | "/docs";
+    };
+}
+
+export interface GitHubPagesBuild {
+    status: string;
+    url: string;
+    created_at?: string;
+    updated_at?: string;
+    error?: {
+        message: string | null;
+    };
+}
+
 export async function fetchRepoReleases(
     owner: string,
     name: string,
 ): Promise<GitHubRelease[]> {
-    return ghFetch<GitHubRelease[]>(
-        `/repos/${owner}/${name}/releases?per_page=20`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:releases`,
+        CACHE_TTL_MEDIUM,
+        () =>
+            ghFetch<GitHubRelease[]>(
+                `/repos/${owner}/${name}/releases?per_page=20`,
+            ),
     );
+}
+
+export async function fetchRepoPagesSite(
+    owner: string,
+    name: string,
+): Promise<GitHubPagesSite | null> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/pages`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": APP_USER_AGENT,
+        },
+    });
+
+    if (response.status === 404) {
+        return null;
+    }
+
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub Pages error ${response.status}: ${text}`);
+    }
+
+    return response.json();
+}
+
+export async function createRepoPagesSite(
+    owner: string,
+    name: string,
+    branch: string,
+    path: "/" | "/docs",
+): Promise<GitHubPagesSite> {
+    return ghPost<GitHubPagesSite>(`/repos/${owner}/${name}/pages`, {
+        source: {
+            branch,
+            path,
+        },
+    });
+}
+
+export async function updateRepoPagesSite(
+    owner: string,
+    name: string,
+    branch: string,
+    path: "/" | "/docs",
+): Promise<void> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/pages`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": APP_USER_AGENT,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            source: {
+                branch,
+                path,
+            },
+        }),
+    });
+
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub Pages error ${response.status}: ${text}`);
+    }
+}
+
+export async function deleteRepoPagesSite(
+    owner: string,
+    name: string,
+): Promise<void> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/pages`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": APP_USER_AGENT,
+        },
+    });
+
+    if (response.status === 404) {
+        return;
+    }
+
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub Pages error ${response.status}: ${text}`);
+    }
+}
+
+export async function requestRepoPagesBuild(
+    owner: string,
+    name: string,
+): Promise<GitHubPagesBuild> {
+    return ghPost<GitHubPagesBuild>(`/repos/${owner}/${name}/pages/builds`, {});
+}
+
+export async function fetchLatestRepoPagesBuild(
+    owner: string,
+    name: string,
+): Promise<GitHubPagesBuild | null> {
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API}/repos/${owner}/${name}/pages/builds/latest`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": APP_USER_AGENT,
+        },
+    });
+
+    if (response.status === 404) {
+        return null;
+    }
+
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub Pages build error ${response.status}: ${text}`);
+    }
+
+    return response.json();
 }
 
 export async function fetchRepoContributors(
     owner: string,
     name: string,
 ): Promise<GitHubContributor[]> {
-    return ghFetch<GitHubContributor[]>(
-        `/repos/${owner}/${name}/contributors?per_page=30`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:contributors`,
+        CACHE_TTL_MEDIUM,
+        () =>
+            ghFetch<GitHubContributor[]>(
+                `/repos/${owner}/${name}/contributors?per_page=30`,
+            ),
     );
 }
 
@@ -913,7 +1216,11 @@ export async function fetchCommitDetail(
     name: string,
     sha: string,
 ): Promise<GitHubCommitDetail> {
-    return ghFetch<GitHubCommitDetail>(`/repos/${owner}/${name}/commits/${sha}`);
+    return fetchWithCache(
+        `repo:${owner}/${name}:commit:${sha}`,
+        CACHE_TTL_MEDIUM,
+        () => ghFetch<GitHubCommitDetail>(`/repos/${owner}/${name}/commits/${sha}`),
+    );
 }
 
 export async function fetchWorkflowRunDetail(
@@ -921,8 +1228,13 @@ export async function fetchWorkflowRunDetail(
     name: string,
     runId: number,
 ): Promise<GitHubWorkflowRunDetail> {
-    return ghFetch<GitHubWorkflowRunDetail>(
-        `/repos/${owner}/${name}/actions/runs/${runId}`,
+    return fetchWithCache(
+        `repo:${owner}/${name}:workflow-run:${runId}`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubWorkflowRunDetail>(
+                `/repos/${owner}/${name}/actions/runs/${runId}`,
+            ),
     );
 }
 
@@ -931,8 +1243,13 @@ export async function fetchWorkflowRunJobs(
     name: string,
     runId: number,
 ): Promise<GitHubWorkflowJob[]> {
-    const data = await ghFetch<{ jobs: GitHubWorkflowJob[] }>(
-        `/repos/${owner}/${name}/actions/runs/${runId}/jobs`,
+    const data = await fetchWithCache(
+        `repo:${owner}/${name}:workflow-run:${runId}:jobs`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<{ jobs: GitHubWorkflowJob[] }>(
+                `/repos/${owner}/${name}/actions/runs/${runId}/jobs`,
+            ),
     );
     return data.jobs || [];
 }
@@ -1011,15 +1328,24 @@ export async function forkRepo(owner: string, name: string): Promise<GitHubRepo>
 }
 
 export async function fetchRepoLanguages(owner: string, name: string): Promise<Record<string, number>> {
-    return ghFetch<Record<string, number>>(`/repos/${owner}/${name}/languages`);
+    return fetchWithCache(
+        `repo:${owner}/${name}:languages`,
+        CACHE_TTL_MEDIUM,
+        () => ghFetch<Record<string, number>>(`/repos/${owner}/${name}/languages`),
+    );
 }
 
 export async function fetchTrendingRepos(): Promise<GitHubRepo[]> {
     const date = new Date();
     date.setDate(date.getDate() - 7);
     const since = date.toISOString().split("T")[0];
-    const data = await ghFetch<{ items: GitHubRepo[] }>(
-        `/search/repositories?q=created:>${since}+stars:>10&sort=stars&order=desc&per_page=20`,
+    const data = await fetchWithCache(
+        `repos:trending:${since}`,
+        CACHE_TTL_LONG,
+        () =>
+            ghFetch<{ items: GitHubRepo[] }>(
+                `/search/repositories?q=created:>${since}+stars:>10&sort=stars&order=desc&per_page=20`,
+            ),
     );
     return data.items || [];
 }
@@ -1397,8 +1723,13 @@ export async function fetchNotifications(
     all: boolean = false,
     participating: boolean = false,
 ): Promise<GitHubNotification[]> {
-    return ghFetch<GitHubNotification[]>(
-        `/notifications?all=${all}&participating=${participating}&per_page=50`,
+    return fetchWithCache(
+        `notifications:${all}:${participating}`,
+        CACHE_TTL_SHORT,
+        () =>
+            ghFetch<GitHubNotification[]>(
+                `/notifications?all=${all}&participating=${participating}&per_page=50`,
+            ),
     );
 }
 
@@ -1555,11 +1886,13 @@ export async function fetchGitHubStatus(): Promise<{
     indicator: string;
     description: string;
 }> {
-    const response = await fetch(
-        "https://www.githubstatus.com/api/v2/status.json",
-        { method: "GET", headers: { Accept: "application/json" } },
-    );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    return data.status;
+    return fetchWithCache("github:status", CACHE_TTL_LONG, async () => {
+        const response = await fetch(
+            "https://www.githubstatus.com/api/v2/status.json",
+            { method: "GET", headers: { Accept: "application/json" } },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return data.status;
+    });
 }

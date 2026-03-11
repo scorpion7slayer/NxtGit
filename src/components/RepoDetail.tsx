@@ -10,6 +10,7 @@ import {
     GitPullRequest,
     GitCommit,
     Loader2,
+    RefreshCw,
     ChevronRight,
     ChevronDown,
     PlayCircle,
@@ -51,8 +52,8 @@ import {
     MoreHorizontal,
     Sparkles,
 } from "lucide-react";
+import { open } from "@tauri-apps/plugin-shell";
 import hljs from "highlight.js";
-import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -68,6 +69,12 @@ import {
     fetchRepoReleases,
     fetchRepoBranches,
     fetchRepoContributors,
+    fetchRepoPagesSite,
+    createRepoPagesSite,
+    updateRepoPagesSite,
+    deleteRepoPagesSite,
+    requestRepoPagesBuild,
+    fetchLatestRepoPagesBuild,
     createOrUpdateFile,
     deleteFile,
     fetchRepoLanguages,
@@ -116,6 +123,8 @@ import {
     type GitHubRelease,
     type GitHubBranch,
     type GitHubContributor,
+    type GitHubPagesSite,
+    type GitHubPagesBuild,
     type GitHubDependabotAlert,
     type GitHubCodeScanAlert,
     type GitHubSecretAlert,
@@ -301,372 +310,6 @@ function ResponsiveTabs({
             )}
         </div>
     );
-}
-
-function splitAssetReference(reference: string) {
-    const [pathWithQuery, hash = ""] = reference.split("#");
-    const [pathname, query = ""] = pathWithQuery.split("?");
-
-    return {
-        pathname,
-        suffix: `${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`,
-    };
-}
-
-function normalizeRepoPath(baseDir: string, assetPath: string): string | null {
-    if (
-        !assetPath ||
-        assetPath.startsWith("#") ||
-        /^(?:[a-z]+:)?\/\//i.test(assetPath) ||
-        /^(?:data|blob|javascript|mailto|tel):/i.test(assetPath)
-    ) {
-        return null;
-    }
-
-    const { pathname } = splitAssetReference(assetPath);
-    const seed = pathname.startsWith("/")
-        ? pathname.slice(1).split("/")
-        : [...(baseDir ? baseDir.split("/") : []), ...pathname.split("/")];
-    const normalized: string[] = [];
-
-    for (const segment of seed) {
-        if (!segment || segment === ".") {
-            continue;
-        }
-
-        if (segment === "..") {
-            normalized.pop();
-            continue;
-        }
-
-        normalized.push(segment);
-    }
-
-    return normalized.join("/");
-}
-
-function toRawGitHubUrl(
-    owner: string,
-    name: string,
-    branch: string,
-    repoPath: string,
-    suffix = "",
-) {
-    return `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${repoPath}${suffix}`;
-}
-
-function rewriteAssetReference(
-    assetValue: string,
-    owner: string,
-    name: string,
-    branch: string,
-    baseDir: string,
-) {
-    const repoPath = normalizeRepoPath(baseDir, assetValue);
-    if (!repoPath) {
-        return null;
-    }
-
-    const { suffix } = splitAssetReference(assetValue);
-    return toRawGitHubUrl(owner, name, branch, repoPath, suffix);
-}
-
-function rewriteCssUrls(
-    css: string,
-    owner: string,
-    name: string,
-    branch: string,
-    baseDir: string,
-) {
-    return css
-        .replace(/url\(([^)]+)\)/g, (match, rawValue: string) => {
-            const trimmed = rawValue.trim().replace(/^['"]|['"]$/g, "");
-            const rewritten = rewriteAssetReference(
-                trimmed,
-                owner,
-                name,
-                branch,
-                baseDir,
-            );
-
-            if (!rewritten) {
-                return match;
-            }
-
-            return `url("${rewritten}")`;
-        })
-        .replace(
-            /@import\s+(?:url\()?\s*(['"]?)([^'")\s]+)\1\s*\)?/g,
-            (match, _quote: string, rawValue: string) => {
-                const rewritten = rewriteAssetReference(
-                    rawValue,
-                    owner,
-                    name,
-                    branch,
-                    baseDir,
-                );
-
-                if (!rewritten) {
-                    return match;
-                }
-
-                return `@import url("${rewritten}")`;
-            },
-        );
-}
-
-function rewriteCssUrlsAgainstBaseUrl(css: string, baseUrl: string) {
-    const resolveExternalCssUrl = (assetPath: string) => {
-        if (
-            !assetPath ||
-            assetPath.startsWith("#") ||
-            /^(?:data|blob|javascript|mailto|tel):/i.test(assetPath)
-        ) {
-            return null;
-        }
-
-        try {
-            return new URL(assetPath, baseUrl).toString();
-        } catch {
-            return null;
-        }
-    };
-
-    return css
-        .replace(/url\(([^)]+)\)/g, (match, rawValue: string) => {
-            const trimmed = rawValue.trim().replace(/^['"]|['"]$/g, "");
-            const rewritten = resolveExternalCssUrl(trimmed);
-
-            if (!rewritten) {
-                return match;
-            }
-
-            return `url("${rewritten}")`;
-        })
-        .replace(
-            /@import\s+(?:url\()?\s*(['"]?)([^'")\s]+)\1\s*\)?/g,
-            (match, _quote: string, rawValue: string) => {
-                const rewritten = resolveExternalCssUrl(rawValue);
-
-                if (!rewritten) {
-                    return match;
-                }
-
-                return `@import url("${rewritten}")`;
-            },
-        );
-}
-
-function rewriteSrcsetUrls(
-    srcset: string,
-    owner: string,
-    name: string,
-    branch: string,
-    baseDir: string,
-) {
-    return srcset
-        .split(",")
-        .map((candidate) => {
-            const trimmed = candidate.trim();
-            if (!trimmed) {
-                return candidate;
-            }
-
-            const [assetPath, ...descriptorParts] = trimmed.split(/\s+/);
-            const rewritten = rewriteAssetReference(
-                assetPath,
-                owner,
-                name,
-                branch,
-                baseDir,
-            );
-
-            if (!rewritten) {
-                return trimmed;
-            }
-
-            return [rewritten, ...descriptorParts].join(" ");
-        })
-        .join(", ");
-}
-
-function upsertMetaHttpEquiv(
-    doc: Document,
-    httpEquiv: string,
-    content: string,
-) {
-    let meta = Array.from(
-        doc.querySelectorAll(`meta[http-equiv="${httpEquiv}"]`),
-    )[0];
-
-    if (!meta) {
-        meta = doc.createElement("meta");
-        meta.setAttribute("http-equiv", httpEquiv);
-        if (doc.head) {
-            doc.head.prepend(meta);
-        }
-    }
-
-    meta.setAttribute("content", content);
-}
-
-function injectPreviewCsp(doc: Document, interactive: boolean) {
-    const csp = interactive
-        ? "default-src 'self' https: data: blob:; script-src 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'unsafe-inline' https:; img-src https: data: blob:; font-src https: data: blob:; media-src https: data: blob:; connect-src https: http:; frame-src https: blob: data:; worker-src blob: https:; object-src 'none';"
-        : "default-src 'self' https: data: blob:; script-src 'none'; style-src 'unsafe-inline' https:; img-src https: data: blob:; font-src https: data: blob:; media-src https: data: blob:; frame-src https: blob: data:; object-src 'none';";
-
-    upsertMetaHttpEquiv(doc, "Content-Security-Policy", csp);
-}
-
-type InteractiveScriptDescriptor = {
-    attributes: Array<{ name: string; value: string }>;
-    content: string;
-};
-
-type StylesheetDescriptor =
-    | {
-          kind: "link";
-          attributes: Array<{ name: string; value: string }>;
-          href: string;
-          media?: string;
-      }
-    | {
-          kind: "style";
-          content: string;
-          media?: string;
-      };
-
-function extractStylesheetDescriptors(html: string): StylesheetDescriptor[] {
-    const parser = new DOMParser();
-    const sourceDoc = parser.parseFromString(html, "text/html");
-    const allowedAttributes = new Set([
-        "as",
-        "blocking",
-        "crossorigin",
-        "disabled",
-        "fetchpriority",
-        "href",
-        "imagesizes",
-        "imagesrcset",
-        "integrity",
-        "media",
-        "nonce",
-        "referrerpolicy",
-        "rel",
-        "type",
-    ]);
-    const descriptors: StylesheetDescriptor[] = [];
-
-    for (const node of Array.from(
-        sourceDoc.querySelectorAll("link[href], style"),
-    )) {
-            if (node.tagName.toLowerCase() === "link") {
-                const href = node.getAttribute("href") || "";
-                const relTokens = (node.getAttribute("rel") || "")
-                    .split(/\s+/)
-                    .map((token) => token.trim().toLowerCase())
-                    .filter(Boolean);
-
-                if (!relTokens.includes("stylesheet") || !href) {
-                    continue;
-                }
-
-                descriptors.push({
-                    kind: "link" as const,
-                    href,
-                    media: node.getAttribute("media") || undefined,
-                    attributes: Array.from(node.attributes)
-                        .filter((attribute) =>
-                            allowedAttributes.has(attribute.name.toLowerCase()),
-                        )
-                        .map((attribute) => ({
-                            name: attribute.name,
-                            value: attribute.value,
-                        })),
-                });
-                continue;
-            }
-
-            if (node.tagName.toLowerCase() === "style") {
-                descriptors.push({
-                    kind: "style" as const,
-                    content: node.textContent || "",
-                    media: node.getAttribute("media") || undefined,
-                });
-            }
-    }
-
-    return descriptors;
-}
-
-function extractInteractiveScripts(html: string): InteractiveScriptDescriptor[] {
-    const sanitizedRoot = DOMPurify.sanitize(html, {
-        WHOLE_DOCUMENT: true,
-        RETURN_DOM: true,
-        ALLOWED_TAGS: ["body", "head", "html", "script"],
-        ALLOWED_ATTR: [
-            "async",
-            "crossorigin",
-            "defer",
-            "integrity",
-            "nomodule",
-            "nonce",
-            "referrerpolicy",
-            "src",
-            "type",
-        ],
-    }) as HTMLElement;
-
-    return Array.from(
-        sanitizedRoot.querySelectorAll("script"),
-    ).map((script) => ({
-        attributes: Array.from(script.attributes).map((attribute) => ({
-            name: attribute.name,
-            value: attribute.value,
-        })),
-        content: script.textContent || "",
-    }));
-}
-
-function cloneInteractiveScripts(
-    scripts: InteractiveScriptDescriptor[],
-    targetDoc: Document,
-    owner: string,
-    name: string,
-    branch: string,
-    baseDir: string,
-) {
-    for (const script of scripts) {
-        const nextScript = targetDoc.createElement("script");
-        let hasSrc = false;
-
-        for (const attribute of script.attributes) {
-            if (attribute.name === "src") {
-                hasSrc = true;
-                const rewritten = rewriteAssetReference(
-                    attribute.value,
-                    owner,
-                    name,
-                    branch,
-                    baseDir,
-                );
-                nextScript.setAttribute("src", rewritten ?? attribute.value);
-                continue;
-            }
-
-            nextScript.setAttribute(attribute.name, attribute.value);
-        }
-
-        if (!hasSrc && script.content) {
-            nextScript.textContent = script.content;
-        }
-
-        if (targetDoc.body) {
-            targetDoc.body.append(nextScript);
-        } else if (targetDoc.head) {
-            targetDoc.head.append(nextScript);
-        }
-    }
 }
 
 const RepoDetail: React.FC = () => {
@@ -1143,7 +786,12 @@ const RepoDetail: React.FC = () => {
             <ResponsiveTabs tabs={tabs} activeTab={tab} onTabChange={setTab} />
 
             {tab === "code" && (
-                <CodeTab owner={owner} name={name} branch={selectedBranch} />
+                <CodeTab
+                    owner={owner}
+                    name={name}
+                    branch={selectedBranch}
+                    homepage={repo.homepage}
+                />
             )}
             {tab === "issues" && <IssuesTab owner={owner} name={name} />}
             {tab === "prs" && (
@@ -1206,12 +854,539 @@ const isMarkdownFile = (f: string) =>
 const isHtmlFile = (f: string) =>
     HTML_EXTS.has(f.split(".").pop()?.toLowerCase() || "");
 
+const sleep = (ms: number) =>
+    new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const isGitHubPagesLikeUrl = (
+    url: string,
+    owner: string,
+): boolean => {
+    try {
+        const parsed = new URL(url);
+        return (
+            parsed.hostname === `${owner.toLowerCase()}.github.io` ||
+            parsed.hostname.endsWith(".github.io")
+        );
+    } catch {
+        return false;
+    }
+};
+
+const preferredPagesPathForFile = (currentPath: string): "/" | "/docs" =>
+    currentPath === "docs" || currentPath.startsWith("docs/") ? "/docs" : "/";
+
+const buildPagesPreviewUrl = (
+    site: GitHubPagesSite,
+    currentPath: string,
+): string | null => {
+    const siteRoot = site.html_url.replace(/\/$/, "");
+    const sourcePath = site.source.path === "/docs" ? "docs/" : "";
+
+    if (site.source.path === "/docs" && !currentPath.startsWith("docs/")) {
+        return siteRoot;
+    }
+
+    const relativePath = sourcePath
+        ? currentPath.slice(sourcePath.length)
+        : currentPath;
+    const cleanedPath = relativePath.replace(/^\/+/, "");
+
+    return cleanedPath ? `${siteRoot}/${cleanedPath}` : siteRoot;
+};
+
+function describePagesBuildState(
+    site: GitHubPagesSite | null,
+    build: GitHubPagesBuild | null,
+): string {
+    const status = (build?.status || site?.status || "").toLowerCase();
+
+    if (status === "built") {
+        return "GitHub Pages is ready.";
+    }
+    if (status === "building") {
+        return "GitHub Pages is building the site...";
+    }
+    if (status === "queued") {
+        return "GitHub Pages is queued for deployment...";
+    }
+    if (status === "errored" || status === "error") {
+        return build?.error?.message || "GitHub Pages failed to build the site.";
+    }
+    if (status === "not_built") {
+        return "GitHub Pages is configured but not built yet.";
+    }
+    return "Checking GitHub Pages deployment...";
+}
+
+const HtmlPagesPreview: React.FC<{
+    owner: string;
+    name: string;
+    branch: string;
+    currentPath: string;
+    homepage: string | null | undefined;
+}> = ({ owner, name, branch, currentPath, homepage }) => {
+    const [site, setSite] = useState<GitHubPagesSite | null>(null);
+    const [loadingSite, setLoadingSite] = useState(true);
+    const [deploying, setDeploying] = useState(false);
+    const [statusText, setStatusText] = useState("Checking GitHub Pages...");
+    const [error, setError] = useState("");
+    const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+
+    const desiredPath = preferredPagesPathForFile(currentPath);
+    const externalHomepage =
+        homepage && !isGitHubPagesLikeUrl(homepage, owner) ? homepage : null;
+    const previewUrl = site ? buildPagesPreviewUrl(site, currentPath) : null;
+    const needsReconfigure =
+        !!site &&
+        (site.source.branch !== branch || site.source.path !== desiredPath);
+
+    const refreshSiteState = async () => {
+        setLoadingSite(true);
+        setError("");
+        try {
+            const [nextSite, nextBuild] = await Promise.all([
+                fetchRepoPagesSite(owner, name),
+                fetchLatestRepoPagesBuild(owner, name).catch(() => null),
+            ]);
+            setSite(nextSite);
+            setStatusText(describePagesBuildState(nextSite, nextBuild));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setLoadingSite(false);
+        }
+    };
+
+    useEffect(() => {
+        void refreshSiteState();
+    }, [owner, name, branch, currentPath]);
+
+    const waitForPagesReady = async () => {
+        const startedAt = Date.now();
+        while (Date.now() - startedAt < 180_000) {
+            const [nextSite, nextBuild] = await Promise.all([
+                fetchRepoPagesSite(owner, name),
+                fetchLatestRepoPagesBuild(owner, name).catch(() => null),
+            ]);
+            setSite(nextSite);
+            setStatusText(describePagesBuildState(nextSite, nextBuild));
+
+            const buildStatus = (nextBuild?.status || nextSite?.status || "").toLowerCase();
+            if (nextSite && buildStatus === "built") {
+                return;
+            }
+            if (buildStatus === "errored" || buildStatus === "error") {
+                throw new Error(
+                    nextBuild?.error?.message ||
+                        "GitHub Pages failed to build the site.",
+                );
+            }
+
+            await sleep(4000);
+        }
+
+        throw new Error(
+            "GitHub Pages is still deploying. You can retry in a moment or open it once GitHub finishes the build.",
+        );
+    };
+
+    const deployPages = async (mode: "create" | "reconfigure" | "rebuild") => {
+        setDeploying(true);
+        setShowDisableConfirm(false);
+        setError("");
+        setStatusText(
+            mode === "create"
+                ? "Creating GitHub Pages..."
+                : mode === "reconfigure"
+                  ? "Updating GitHub Pages source..."
+                  : "Requesting a new GitHub Pages build...",
+        );
+
+        try {
+            if (mode === "create") {
+                const createdSite = await createRepoPagesSite(
+                    owner,
+                    name,
+                    branch,
+                    desiredPath,
+                );
+                setSite(createdSite);
+            } else if (mode === "reconfigure") {
+                await updateRepoPagesSite(owner, name, branch, desiredPath);
+            }
+
+            await requestRepoPagesBuild(owner, name).catch(() => null);
+            await waitForPagesReady();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setDeploying(false);
+        }
+    };
+
+    const disablePages = async () => {
+        setDeploying(true);
+        setError("");
+        setStatusText("Disabling GitHub Pages...");
+
+        try {
+            await deleteRepoPagesSite(owner, name);
+            setSite(null);
+            setShowDisableConfirm(false);
+            setStatusText("GitHub Pages is disabled.");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setDeploying(false);
+        }
+    };
+
+    const cardStyle = {
+        borderColor: "var(--border)",
+        background: "var(--bg-secondary)",
+    } as const;
+
+    if (loadingSite) {
+        return (
+            <div
+                className="flex items-center justify-center py-12"
+                style={{ background: "var(--bg-secondary)" }}
+            >
+                <Loader2
+                    className="w-5 h-5 animate-spin"
+                    style={{ color: "var(--text-tertiary)" }}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ background: "var(--bg-secondary)" }}>
+            <div
+                className="px-4 py-3 border-b flex items-start justify-between gap-3"
+                style={{
+                    borderColor: "var(--border)",
+                    background: "var(--bg-tertiary)",
+                }}
+            >
+                <div>
+                    <p
+                        className="text-sm font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                    >
+                        HTML preview via GitHub Pages
+                    </p>
+                    <p
+                        className="text-xs mt-1"
+                        style={{ color: "var(--text-tertiary)" }}
+                    >
+                        {statusText}
+                    </p>
+                </div>
+                {previewUrl && (
+                    <button
+                        onClick={() => open(previewUrl)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-[var(--bg-secondary)] transition-colors"
+                        style={{
+                            borderColor: "var(--border)",
+                            color: "var(--text-secondary)",
+                        }}
+                    >
+                        <ExternalLink className="w-3 h-3" />
+                        Open
+                    </button>
+                )}
+            </div>
+
+            {error && (
+                <div
+                    className="mx-4 mt-4 px-3 py-2 rounded-lg text-xs"
+                    style={{
+                        background: "rgba(255,59,48,0.08)",
+                        color: "var(--error)",
+                    }}
+                >
+                    {error}
+                </div>
+            )}
+
+            {!site && externalHomepage && (
+                <div className="p-4">
+                    <div className="border rounded-lg p-4 space-y-3" style={cardStyle}>
+                        <div className="flex items-start gap-3">
+                            <ExternalLink
+                                className="w-4 h-4 mt-0.5"
+                                style={{ color: "var(--accent)" }}
+                            />
+                            <div>
+                                <p
+                                    className="text-sm font-medium"
+                                    style={{ color: "var(--text-primary)" }}
+                                >
+                                    This repository already has a website link.
+                                </p>
+                                <p
+                                    className="text-xs mt-1"
+                                    style={{ color: "var(--text-tertiary)" }}
+                                >
+                                    You can open the existing website or create GitHub Pages for this repository. GitHub Pages sites are public.
+                                </p>
+                                <a
+                                    href={externalHomepage}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs mt-2 inline-flex max-w-full truncate hover:underline"
+                                    style={{ color: "var(--accent)" }}
+                                >
+                                    {externalHomepage}
+                                </a>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => open(externalHomepage)}
+                                className="btn-secondary text-xs px-3 py-1.5"
+                            >
+                                Open website
+                            </button>
+                            <button
+                                onClick={() => void deployPages("create")}
+                                disabled={deploying}
+                                className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                            >
+                                {deploying ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                    <PlayCircle className="w-3 h-3" />
+                                )}
+                                Create GitHub Pages
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {!site && !externalHomepage && (
+                <div className="p-4">
+                    <div className="border rounded-lg p-4 space-y-3" style={cardStyle}>
+                        <div className="flex items-start gap-3">
+                            <PlayCircle
+                                className="w-4 h-4 mt-0.5"
+                                style={{ color: "var(--accent)" }}
+                            />
+                            <div>
+                                <p
+                                    className="text-sm font-medium"
+                                    style={{ color: "var(--text-primary)" }}
+                                >
+                                    Create GitHub Pages for this preview
+                                </p>
+                                <p
+                                    className="text-xs mt-1"
+                                    style={{ color: "var(--text-tertiary)" }}
+                                >
+                                    NxtGit can create GitHub Pages on branch <span className="font-mono">{branch}</span> using path <span className="font-mono">{desiredPath}</span>, then wait until the site is ready.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => void deployPages("create")}
+                            disabled={deploying}
+                            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                        >
+                            {deploying ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                                <PlayCircle className="w-3 h-3" />
+                            )}
+                            Create GitHub Pages
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {site && (
+                <div className="p-4 space-y-4">
+                    <div className="border rounded-lg p-4 space-y-3" style={cardStyle}>
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <p
+                                    className="text-sm font-medium"
+                                    style={{ color: "var(--text-primary)" }}
+                                >
+                                    GitHub Pages is configured
+                                </p>
+                                <p
+                                    className="text-xs mt-1"
+                                    style={{ color: "var(--text-tertiary)" }}
+                                >
+                                    Source: <span className="font-mono">{site.source.branch}</span> · <span className="font-mono">{site.source.path}</span>
+                                </p>
+                                <a
+                                    href={site.html_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs mt-2 inline-flex max-w-full truncate hover:underline"
+                                    style={{ color: "var(--accent)" }}
+                                >
+                                    {site.html_url}
+                                </a>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => open(site.html_url)}
+                                    className="btn-secondary text-xs px-3 py-1.5"
+                                >
+                                    Open Pages
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        void deployPages(
+                                            needsReconfigure ? "reconfigure" : "rebuild",
+                                        )
+                                    }
+                                    disabled={deploying}
+                                    className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                                >
+                                    {deploying ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <RefreshCw className="w-3 h-3" />
+                                    )}
+                                    {needsReconfigure
+                                        ? "Use current branch"
+                                        : "Rebuild Pages"}
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        setShowDisableConfirm((value) => !value)
+                                    }
+                                    disabled={deploying}
+                                    className="text-xs px-3 py-1.5 rounded-md font-medium transition-colors border"
+                                    style={{
+                                        borderColor: "rgba(255,59,48,0.35)",
+                                        color: "var(--error)",
+                                    }}
+                                >
+                                    Disable Pages
+                                </button>
+                            </div>
+                        </div>
+                        {needsReconfigure && (
+                            <p
+                                className="text-xs"
+                                style={{ color: "var(--warning)" }}
+                            >
+                                Current file is on <span className="font-mono">{branch}</span> with preferred Pages path <span className="font-mono">{desiredPath}</span>. Reconfiguring Pages will switch the repository site to that source.
+                            </p>
+                        )}
+                        {showDisableConfirm && (
+                            <div
+                                className="border rounded-lg p-3 flex items-center justify-between gap-3"
+                                style={{
+                                    borderColor: "rgba(255,59,48,0.25)",
+                                    background: "rgba(255,59,48,0.06)",
+                                }}
+                            >
+                                <div>
+                                    <p
+                                        className="text-xs font-medium"
+                                        style={{ color: "var(--error)" }}
+                                    >
+                                        Disable GitHub Pages for this repository?
+                                    </p>
+                                    <p
+                                        className="text-xs mt-1"
+                                        style={{ color: "var(--text-tertiary)" }}
+                                    >
+                                        The public Pages site will stop serving until it is created again.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setShowDisableConfirm(false)}
+                                        className="btn-secondary text-xs px-3 py-1.5"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => void disablePages()}
+                                        disabled={deploying}
+                                        className="text-xs px-3 py-1.5 rounded-md font-medium transition-colors"
+                                        style={{
+                                            background: "var(--error)",
+                                            color: "#fff",
+                                        }}
+                                    >
+                                        {deploying ? "Disabling..." : "Disable"}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {previewUrl && !deploying && (
+                        <div className="space-y-2">
+                            <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs inline-flex max-w-full truncate hover:underline"
+                                style={{ color: "var(--accent)" }}
+                            >
+                                {previewUrl}
+                            </a>
+                            <iframe
+                                src={previewUrl}
+                                title={`Preview ${currentPath}`}
+                                style={{
+                                    width: "100%",
+                                    height: "65vh",
+                                    border: "none",
+                                    background: "white",
+                                    borderRadius: 10,
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    {deploying && (
+                        <div
+                            className="flex items-center justify-center py-12 border rounded-lg"
+                            style={cardStyle}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Loader2
+                                    className="w-5 h-5 animate-spin"
+                                    style={{ color: "var(--text-tertiary)" }}
+                                />
+                                <span
+                                    className="text-sm"
+                                    style={{ color: "var(--text-secondary)" }}
+                                >
+                                    {statusText}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // --- Code Tab with highlight.js + edit/commit/preview ---
 
-const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
+const CodeTab: React.FC<{
+    owner: string;
+    name: string;
+    branch: string;
+    homepage?: string | null;
+}> = ({
     owner,
     name,
     branch,
+    homepage,
 }) => {
     const [contents, setContents] = useState<GitHubContent[]>([]);
     const [currentPath, setCurrentPath] = useState("");
@@ -1239,9 +1414,6 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
 
     // Markdown/HTML preview & delete
     const [showPreview, setShowPreview] = useState(false);
-    const [resolvedHtml, setResolvedHtml] = useState<string | null>(null);
-    const [resolvedHtmlUrl, setResolvedHtmlUrl] = useState<string | null>(null);
-    const [interactiveHtmlPreview, setInteractiveHtmlPreview] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -1263,7 +1435,6 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
         setSaveSuccess(false);
         setSaveError(null);
         setShowPreview(false);
-        setInteractiveHtmlPreview(false);
         setShowDeleteConfirm(false);
 
         fetchRepoContents(owner, name, currentPath, branch)
@@ -1310,273 +1481,6 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
     const isImage = isImageFile(fileName);
     const isMd = isMarkdownFile(fileName);
     const isHtml = isHtmlFile(fileName);
-
-    // Resolve linked CSS/JS for HTML preview
-    useEffect(() => {
-        if (!showPreview || !isHtml || fileContent === null) {
-            setResolvedHtml(null);
-            return;
-        }
-        let cancelled = false;
-        const dirPath = currentPath.split("/").slice(0, -1).join("/");
-        const interactiveScripts = interactiveHtmlPreview
-            ? extractInteractiveScripts(fileContent)
-            : [];
-        const stylesheetDescriptors = extractStylesheetDescriptors(fileContent);
-
-        (async () => {
-            const sanitizedHtml = DOMPurify.sanitize(fileContent, {
-                WHOLE_DOCUMENT: true,
-                ADD_TAGS: ["base", "body", "head", "html", "link", "meta", "style", "title"],
-                ADD_ATTR: [
-                    "as",
-                    "alt",
-                    "blocking",
-                    "charset",
-                    "class",
-                    "content",
-                    "crossorigin",
-                    "disabled",
-                    "fetchpriority",
-                    "href",
-                    "http-equiv",
-                    "id",
-                    "imagesizes",
-                    "imagesrcset",
-                    "integrity",
-                    "media",
-                    "name",
-                    "nonce",
-                    "poster",
-                    "referrerpolicy",
-                    "rel",
-                    "sizes",
-                    "src",
-                    "srcset",
-                    "style",
-                    "type",
-                ],
-                FORBID_TAGS: ["script"],
-            });
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(sanitizedHtml, "text/html");
-
-            for (const element of Array.from(doc.querySelectorAll("*"))) {
-                for (const attribute of Array.from(element.attributes)) {
-                    if (/^on/i.test(attribute.name)) {
-                        element.removeAttribute(attribute.name);
-                    }
-                }
-            }
-
-            const baseHref = `${toRawGitHubUrl(
-                owner,
-                name,
-                branch,
-                dirPath ? `${dirPath}/` : "",
-            )}`;
-            let baseEl = doc.querySelector("base");
-            if (!baseEl) {
-                baseEl = doc.createElement("base");
-                if (doc.head) {
-                    doc.head.prepend(baseEl);
-                }
-            }
-            baseEl.setAttribute("href", baseHref);
-            injectPreviewCsp(doc, interactiveHtmlPreview);
-
-            for (const styleNode of Array.from(
-                doc.querySelectorAll('link[href], style'),
-            )) {
-                if (
-                    styleNode instanceof HTMLLinkElement &&
-                    !styleNode.rel
-                        .split(/\s+/)
-                        .map((token) => token.trim().toLowerCase())
-                        .includes("stylesheet")
-                ) {
-                    continue;
-                }
-
-                styleNode.remove();
-            }
-
-            const styleContainer = doc.head || doc.body || doc.documentElement;
-
-            for (const descriptor of stylesheetDescriptors) {
-                try {
-                    if (descriptor.kind === "style") {
-                        const style = doc.createElement("style");
-                        if (descriptor.media) {
-                            style.setAttribute("media", descriptor.media);
-                        }
-                        style.textContent = rewriteCssUrls(
-                            descriptor.content,
-                            owner,
-                            name,
-                            branch,
-                            dirPath,
-                        );
-                        styleContainer.append(style);
-                        continue;
-                    }
-
-                    const repoPath = normalizeRepoPath(dirPath, descriptor.href);
-                    let css: string | null = null;
-
-                    if (repoPath) {
-                        css = rewriteCssUrls(
-                            await fetchFileContent(
-                                owner,
-                                name,
-                                repoPath,
-                                branch,
-                            ),
-                            owner,
-                            name,
-                            branch,
-                            repoPath.split("/").slice(0, -1).join("/"),
-                        );
-                    } else {
-                        const externalUrl = new URL(
-                            descriptor.href,
-                            baseHref,
-                        ).toString();
-                        const response = await fetch(externalUrl);
-                        if (response.ok) {
-                            css = rewriteCssUrlsAgainstBaseUrl(
-                                await response.text(),
-                                externalUrl,
-                            );
-                        }
-                    }
-
-                    if (cancelled) return;
-
-                    if (css) {
-                        const style = doc.createElement("style");
-                        if (descriptor.media) {
-                            style.setAttribute("media", descriptor.media);
-                        }
-                        style.textContent = css;
-                        styleContainer.append(style);
-                        continue;
-                    }
-
-                    const link = doc.createElement("link");
-                    for (const attribute of descriptor.attributes) {
-                        link.setAttribute(attribute.name, attribute.value);
-                    }
-                    styleContainer.append(link);
-                } catch {
-                    if (descriptor.kind !== "link") {
-                        continue;
-                    }
-
-                    const link = doc.createElement("link");
-                    for (const attribute of descriptor.attributes) {
-                        link.setAttribute(attribute.name, attribute.value);
-                    }
-                    styleContainer.append(link);
-                }
-            }
-
-            for (const element of Array.from(doc.querySelectorAll("[style]"))) {
-                const styleValue = element.getAttribute("style");
-                if (!styleValue) continue;
-                element.setAttribute(
-                    "style",
-                    rewriteCssUrls(styleValue, owner, name, branch, dirPath),
-                );
-            }
-
-            for (const element of Array.from(doc.querySelectorAll("[srcset]"))) {
-                const srcset = element.getAttribute("srcset");
-                if (!srcset) continue;
-                element.setAttribute(
-                    "srcset",
-                    rewriteSrcsetUrls(srcset, owner, name, branch, dirPath),
-                );
-            }
-
-            // Resolve remaining local asset URLs to raw.githubusercontent.com
-            const assetAttrs = [
-                ["img[src]", "src"],
-                ["source[src]", "src"],
-                ["video[poster]", "poster"],
-                ["audio[src]", "src"],
-                ["object[data]", "data"],
-                ["link[href]", "href"],
-            ] as const;
-
-            for (const [selector, attribute] of assetAttrs) {
-                const elements = Array.from(doc.querySelectorAll(selector));
-                for (const element of elements) {
-                    const value = element.getAttribute(attribute);
-                    if (!value) continue;
-                    const repoPath = normalizeRepoPath(dirPath, value);
-                    if (!repoPath) continue;
-                    const { suffix } = splitAssetReference(value);
-                    element.setAttribute(
-                        attribute,
-                        toRawGitHubUrl(owner, name, branch, repoPath, suffix),
-                    );
-                }
-            }
-
-            if (interactiveHtmlPreview) {
-                cloneInteractiveScripts(
-                    interactiveScripts,
-                    doc,
-                    owner,
-                    name,
-                    branch,
-                    dirPath,
-                );
-            }
-
-            if (!cancelled) setResolvedHtml(doc.documentElement.outerHTML);
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [
-        showPreview,
-        isHtml,
-        fileContent,
-        owner,
-        name,
-        currentPath,
-        branch,
-        interactiveHtmlPreview,
-    ]);
-
-    useEffect(() => {
-        if (!resolvedHtml) {
-            setResolvedHtmlUrl((currentUrl) => {
-                if (currentUrl) {
-                    URL.revokeObjectURL(currentUrl);
-                }
-                return null;
-            });
-            return;
-        }
-
-        const blob = new Blob([resolvedHtml], { type: "text/html;charset=utf-8" });
-        const nextUrl = URL.createObjectURL(blob);
-
-        setResolvedHtmlUrl((currentUrl) => {
-            if (currentUrl) {
-                URL.revokeObjectURL(currentUrl);
-            }
-            return nextUrl;
-        });
-
-        return () => {
-            URL.revokeObjectURL(nextUrl);
-        };
-    }, [resolvedHtml]);
 
     const handleSave = async () => {
         if (!commitMsg.trim()) return;
@@ -1839,24 +1743,6 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                                     {showPreview ? "Code" : "Preview"}
                                 </button>
                             )}
-                            {isHtml && showPreview && !editing && (
-                                <button
-                                    onClick={() =>
-                                        setInteractiveHtmlPreview((value) => !value)
-                                    }
-                                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] hover:bg-[var(--bg-secondary)] transition-colors"
-                                    style={{
-                                        color: interactiveHtmlPreview
-                                            ? "var(--warning)"
-                                            : "var(--text-secondary)",
-                                    }}
-                                >
-                                    <PlayCircle className="w-3 h-3" />
-                                    {interactiveHtmlPreview
-                                        ? "JS on"
-                                        : "Enable JS"}
-                                </button>
-                            )}
                             {!isImage && !editing && (
                                 <button
                                     onClick={() => {
@@ -1955,48 +1841,15 @@ const CodeTab: React.FC<{ owner: string; name: string; branch: string }> = ({
                     {!isImage &&
                         showPreview &&
                         isHtml &&
-                        (resolvedHtmlUrl ? (
-                            <div style={{ background: "var(--bg-secondary)" }}>
-                                {interactiveHtmlPreview && (
-                                    <div
-                                        className="px-4 py-2 text-[11px] flex items-center gap-2 border-b"
-                                        style={{
-                                            borderColor: "var(--border)",
-                                            background: "rgba(255, 149, 0, 0.08)",
-                                            color: "var(--warning)",
-                                        }}
-                                    >
-                                        <AlertTriangle className="w-3.5 h-3.5" />
-                                        Interactive preview enabled. Repository JavaScript runs in a sandboxed iframe with no access to the app context.
-                                    </div>
-                                )}
-                                <iframe
-                                    src={resolvedHtmlUrl}
-                                    sandbox={
-                                        interactiveHtmlPreview
-                                            ? "allow-scripts"
-                                            : ""
-                                    }
-                                    title={`Preview ${fileName}`}
-                                    style={{
-                                        width: "100%",
-                                        height: "65vh",
-                                        border: "none",
-                                        background: "white",
-                                    }}
-                                />
-                            </div>
-                        ) : (
-                            <div
-                                className="flex items-center justify-center py-12"
-                                style={{ background: "var(--bg-secondary)" }}
-                            >
-                                <Loader2
-                                    className="w-5 h-5 animate-spin"
-                                    style={{ color: "var(--text-tertiary)" }}
-                                />
-                            </div>
-                        ))}
+                        fileContent !== null && (
+                            <HtmlPagesPreview
+                                owner={owner}
+                                name={name}
+                                branch={branch}
+                                currentPath={currentPath}
+                                homepage={homepage}
+                            />
+                        )}
 
                     {/* Edit mode */}
                     {!isImage && editing && (

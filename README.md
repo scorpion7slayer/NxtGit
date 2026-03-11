@@ -4,6 +4,13 @@ AI-native Git client built with Tauri v2, full GitHub integration, multi-provide
 
 ![NxtGit](screenshot.png)
 
+## Quick Look
+
+- Browse repositories, issues, pull requests, releases, commits, workflow runs, and file trees from one desktop app
+- Use AI chat and AI review without leaving the Git context
+- Preview markdown and images directly in the repository browser, and launch HTML files through GitHub Pages
+- Move faster with configurable keyboard shortcuts and cached repo data for slower or unstable connections
+
 ## Features
 
 - **AI Chat** — Full conversational chat with streaming, thinking blocks, file & repo attachments
@@ -13,12 +20,15 @@ AI-native Git client built with Tauri v2, full GitHub integration, multi-provide
 - **In-App File Editor** — Edit files, commit & push directly from the app (like github.com)
 - **Image Preview** — View images (PNG, JPG, GIF, SVG, WebP) inline in the file browser
 - **Markdown Preview** — Toggle between code and rendered markdown preview
+- **GitHub Pages Preview** — Create, open, rebuild, or disable GitHub Pages to preview repository HTML with real assets and JavaScript
 - **Commit & Push** — Create, edit, and delete files with commit messages — no terminal needed
 - **Branch Management** — Switch branches, view protection status, create new branches
 - **Repository Browser** — Browse repos, issues, PRs, commits, releases, contributors, and file trees
 - **GitHub Actions** — View workflow runs, jobs, and step details
 - **GitHub Changelog** — Read GitHub's changelog with full content, images, and videos in-app
 - **Global Search** — Search repositories and users across GitHub
+- **Keyboard Shortcuts** — Customizable navigation shortcuts from Settings
+- **Offline Cache** — Cached repository lists, repo detail, file trees, issues, pull requests, commits, and more
 - **User Profiles** — View user profiles with repos, stats, and social links
 - **Liquid Glass UI** — macOS Tahoe (26+) only, with solid fallbacks on earlier macOS versions and other platforms
 - **GitHub OAuth** — Device flow authentication for GitHub + separate Copilot OAuth
@@ -41,11 +51,12 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 ## Latest Release Notes
 
-### v1.0.7-fix
+### v1.0.8
 
-- Fix: restored CDN stylesheet loading in HTML preview, including Bootstrap and other external CSS links
-- Fix: rebuilt HTML preview styles from the source document so linked and inline styles render reliably again
-- Fix: added a safer remote stylesheet fallback by inlining CDN CSS in HTML preview
+- Feature: added customizable keyboard shortcuts for the main navigation from Settings
+- Feature: added persistent offline caching for repositories, repo data, workflow runs, notifications, and GitHub status
+- Feature: replaced the fragile in-app HTML runtime preview with a GitHub Pages creation/open/rebuild/disable flow
+- Improvement: added visible website and GitHub Pages URLs before opening a repository preview
 
 ### v1.0.5-fix
 
