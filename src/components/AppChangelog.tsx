@@ -13,6 +13,16 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.8-fix',
+    date: 'March 2026',
+    changes: [
+      { type: 'fix', text: 'Fixed the Windows 11 ARM64 release so users get a native ARM64 MSI and NSIS installer instead of an incomplete package set' },
+      { type: 'fix', text: 'Hardened release verification so Windows ARM64 must ship both .msi and .exe installers before publishing' },
+      { type: 'fix', text: 'Hardened release verification so Linux ARM64 must ship both .deb and .AppImage bundles before publishing' },
+      { type: 'fix', text: 'Updated the Rust lockfile to quinn-proto 0.11.14 to address the published security advisory' },
+    ],
+  },
+  {
     version: '1.0.8',
     date: 'March 2026',
     changes: [

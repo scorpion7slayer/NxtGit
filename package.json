@@ -1,6 +1,6 @@
 {
   "name": "nxtgit",
-  "version": "1.0.8",
+  "version": "1.0.8-fix",
   "description": "AI-native Git client for macOS with Liquid Glass UI",
   "type": "module",
   "scripts": {

@@ -43,13 +43,20 @@ AI-native Git client built with Tauri v2, full GitHub integration, multi-provide
 | **macOS** | Apple Silicon (M1+)/Intel (x86_64) | `.dmg` |
 | **Windows** | x64 | `.msi` / `.exe` |
 | **Windows** | x86 (32-bit) | `.msi` / `.exe` |
-| **Windows** | ARM64 | `.exe` |
+| **Windows** | ARM64 | `.msi` / `.exe` |
 | **Linux** | x64 | `.deb` / `.AppImage` |
 | **Linux** | ARM64 | `.deb` / `.AppImage` |
 
 Download the latest release from the [Releases page](https://github.com/scorpion7slayer/NxtGit/releases).
 
 ## Latest Release Notes
+
+### v1.0.8-fix
+
+- Fix: restored the Windows 11 ARM64 release to publish both native `.msi` and `.exe` installers
+- Fix: tightened the release gate so Windows ARM64 cannot publish without both installer formats
+- Fix: tightened the release gate so Linux ARM64 cannot publish unless both `.deb` and `.AppImage` are present
+- Fix: updated the Rust lockfile to `quinn-proto 0.11.14` for the published security advisory
 
 ### v1.0.8
 

@@ -82,7 +82,7 @@ jobs:
             target: "i686-pc-windows-msvc"
           # Windows — ARM64
           - platform: "windows-11-arm"
-            args: "--target aarch64-pc-windows-msvc --bundles nsis"
+            args: "--target aarch64-pc-windows-msvc --bundles msi,nsis"
             target: "aarch64-pc-windows-msvc"
 
     uses: ./.github/workflows/build.yml
@@ -118,11 +118,16 @@ jobs:
             const hasLatestJson = assetNames.includes('latest.json')
             const signatureCount = assetNames.filter((name) => name.endsWith('.sig')).length
             const hasMacDmg = assetNames.some((name) => name.endsWith('.dmg'))
-            const hasWindowsX64 = assetNames.some((name) => name.includes('_x64-setup.exe') || name.includes('_x64_en-US.msi'))
-            const hasWindowsX86 = assetNames.some((name) => name.includes('_x86-setup.exe') || name.includes('_x86_en-US.msi'))
-            const hasWindowsArm64 = assetNames.some((name) => name.includes('_arm64-setup.exe') || name.includes('_arm64_en-US.msi'))
-            const hasLinuxX64 = assetNames.some((name) => name.includes('_amd64.deb') || name.includes('_amd64.AppImage'))
-            const hasLinuxArm64 = assetNames.some((name) => name.includes('_arm64.deb') || name.includes('_aarch64.AppImage'))
+            const hasWindowsX64Nsis = assetNames.some((name) => name.includes('_x64-setup.exe'))
+            const hasWindowsX64Msi = assetNames.some((name) => name.includes('_x64_en-US.msi'))
+            const hasWindowsX86Nsis = assetNames.some((name) => name.includes('_x86-setup.exe'))
+            const hasWindowsX86Msi = assetNames.some((name) => name.includes('_x86_en-US.msi'))
+            const hasWindowsArm64Nsis = assetNames.some((name) => name.includes('_arm64-setup.exe'))
+            const hasWindowsArm64Msi = assetNames.some((name) => name.includes('_arm64_en-US.msi'))
+            const hasLinuxX64Deb = assetNames.some((name) => name.includes('_amd64.deb'))
+            const hasLinuxX64AppImage = assetNames.some((name) => name.includes('_amd64.AppImage'))
+            const hasLinuxArm64Deb = assetNames.some((name) => name.includes('_arm64.deb'))
+            const hasLinuxArm64AppImage = assetNames.some((name) => name.includes('_aarch64.AppImage'))
 
             core.info(`Release assets: ${assetNames.join(', ')}`)
 
@@ -141,13 +146,13 @@ jobs:
               return
             }
 
-            if (!hasWindowsX64 || !hasWindowsX86 || !hasWindowsArm64) {
-              core.setFailed('Missing one or more Windows assets (x64, x86, ARM64).')
+            if (!hasWindowsX64Nsis || !hasWindowsX64Msi || !hasWindowsX86Nsis || !hasWindowsX86Msi || !hasWindowsArm64Nsis || !hasWindowsArm64Msi) {
+              core.setFailed('Missing one or more Windows assets. Each Windows architecture must include both NSIS (.exe) and MSI (.msi).')
               return
             }
 
-            if (!hasLinuxX64 || !hasLinuxArm64) {
-              core.setFailed('Missing one or more Linux assets (x64, ARM64).')
+            if (!hasLinuxX64Deb || !hasLinuxX64AppImage || !hasLinuxArm64Deb || !hasLinuxArm64AppImage) {
+              core.setFailed('Missing one or more Linux assets. Both x64 and ARM64 must include .deb and .AppImage bundles.')
             }
 
   publish-release:
