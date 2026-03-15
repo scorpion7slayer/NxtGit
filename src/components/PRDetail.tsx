@@ -2,15 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, GitPullRequest, GitMerge, Loader2, FileCode, Plus, Minus, Send, Check } from 'lucide-react';
 import {
-  fetchPRDetail, fetchPRFiles, fetchIssueComments, createComment, mergePR,
-  timeAgo, type GitHubPRDetail, type GitHubPRFile, type GitHubComment,
+  fetchPRDetail, fetchPRFiles, fetchIssueComments, createComment, mergePR, fetchRepoDetail,
+  timeAgo, type GitHubPRDetail, type GitHubPRFile, type GitHubComment, type GitHubRepo,
 } from '../lib/github';
 import MarkdownRenderer from './MarkdownRenderer';
+
+function formatMergeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Merge failed';
+
+  if (message.includes('GitHub API error 404')) {
+    return 'GitHub could not find a merge endpoint for this pull request. This usually means your account can view the repository but does not have write access to merge into it.';
+  }
+
+  if (message.includes('GitHub API error 405')) {
+    return 'GitHub does not allow the selected merge method for this pull request right now.';
+  }
+
+  if (message.includes('GitHub API error 409')) {
+    return 'GitHub reported a merge conflict or an out-of-date branch. Update the pull request branch and try again.';
+  }
+
+  if (message.includes('GitHub API error 422')) {
+    return 'GitHub rejected the merge. Required checks, required reviews, or branch protection rules may still be blocking it.';
+  }
+
+  return message;
+}
 
 const PRDetailPage: React.FC = () => {
   const { owner, name, number } = useParams<{ owner: string; name: string; number: string }>();
   const navigate = useNavigate();
   const [pr, setPR] = useState<GitHubPRDetail | null>(null);
+  const [repo, setRepo] = useState<GitHubRepo | null>(null);
   const [files, setFiles] = useState<GitHubPRFile[]>([]);
   const [comments, setComments] = useState<GitHubComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,12 +47,18 @@ const PRDetailPage: React.FC = () => {
   useEffect(() => {
     if (!owner || !name || !number) return;
     const num = parseInt(number);
-    Promise.all([
-      fetchPRDetail(owner, name, num).then(setPR),
-      fetchPRFiles(owner, name, num).then(setFiles),
-      fetchIssueComments(owner, name, num).then(setComments),
+    Promise.allSettled([
+      fetchPRDetail(owner, name, num),
+      fetchPRFiles(owner, name, num),
+      fetchIssueComments(owner, name, num),
+      fetchRepoDetail(owner, name),
     ])
-      .catch(() => {})
+      .then(([prResult, filesResult, commentsResult, repoResult]) => {
+        if (prResult.status === 'fulfilled') setPR(prResult.value);
+        if (filesResult.status === 'fulfilled') setFiles(filesResult.value);
+        if (commentsResult.status === 'fulfilled') setComments(commentsResult.value);
+        if (repoResult.status === 'fulfilled') setRepo(repoResult.value);
+      })
       .finally(() => setLoading(false));
   }, [owner, name, number]);
 
@@ -46,14 +75,15 @@ const PRDetailPage: React.FC = () => {
 
   const handleMerge = async () => {
     if (!owner || !name || !number) return;
+    if (!canAttemptMerge) return;
     setMerging(true);
     setMergeError('');
     try {
       await mergePR(owner, name, parseInt(number), mergeMethod);
-      const updated = await fetchPRDetail(owner, name, parseInt(number));
+      const updated = await fetchPRDetail(owner, name, parseInt(number), { force: true });
       setPR(updated);
     } catch (e) {
-      setMergeError(e instanceof Error ? e.message : 'Merge failed');
+      setMergeError(formatMergeError(e));
     }
     setMerging(false);
   };
@@ -69,6 +99,30 @@ const PRDetailPage: React.FC = () => {
   const status = pr.merged ? 'merged' : pr.state;
   const statusColor = status === 'merged' ? '#A371F7' : status === 'open' ? '#3FB950' : '#F85149';
   const StatusIcon = pr.merged ? GitMerge : GitPullRequest;
+  const repoPermissions = repo?.permissions;
+  const hasMergePermission = !!(
+    repoPermissions?.admin ||
+    repoPermissions?.maintain ||
+    repoPermissions?.push
+  );
+  const mergePermissionKnown = !!repoPermissions;
+  const selectedMethodAllowed =
+    mergeMethod === 'merge'
+      ? repo?.allow_merge_commit !== false
+      : mergeMethod === 'squash'
+        ? repo?.allow_squash_merge !== false
+        : repo?.allow_rebase_merge !== false;
+  const mergeMethodLabel =
+    mergeMethod === 'merge'
+      ? 'merge commits'
+      : mergeMethod === 'squash'
+        ? 'squash merges'
+        : 'rebase merges';
+  const canAttemptMerge =
+    pr.state === 'open' &&
+    !pr.merged &&
+    (!mergePermissionKnown || hasMergePermission) &&
+    selectedMethodAllowed;
 
   return (
     <div className="p-6 w-full">
@@ -100,7 +154,58 @@ const PRDetailPage: React.FC = () => {
       </div>
 
       {/* Merge panel */}
-      {pr.state === 'open' && !pr.merged && (
+      {pr.state === 'open' && !pr.merged && !mergePermissionKnown && (
+        <div className="border rounded-lg p-4 mb-4 flex items-center gap-3 flex-wrap"
+             style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
+          <select
+            value={mergeMethod}
+            onChange={e => setMergeMethod(e.target.value as 'merge' | 'squash' | 'rebase')}
+            className="input-glass text-xs py-1.5 px-2"
+            style={{ width: 'auto' }}
+          >
+            <option value="merge">Merge commit</option>
+            <option value="squash">Squash and merge</option>
+            <option value="rebase">Rebase and merge</option>
+          </select>
+          <button
+            onClick={handleMerge}
+            disabled={merging}
+            className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-4"
+            style={{ background: '#238636' }}
+          >
+            {merging ? <Loader2 className="w-3 h-3 animate-spin" /> : <><GitMerge className="w-3 h-3" /> Merge pull request</>}
+          </button>
+          {mergeError && <span className="text-xs" style={{ color: 'var(--error)' }}>{mergeError}</span>}
+        </div>
+      )}
+
+      {pr.state === 'open' && !pr.merged && mergePermissionKnown && !hasMergePermission && (
+        <div
+          className="border rounded-lg p-4 mb-4 text-sm"
+          style={{
+            borderColor: 'rgba(255, 149, 0, 0.28)',
+            background: 'rgba(255, 149, 0, 0.08)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          You can view this pull request, but GitHub only allows merging for users with write access to the base repository.
+        </div>
+      )}
+
+      {pr.state === 'open' && !pr.merged && mergePermissionKnown && hasMergePermission && !selectedMethodAllowed && (
+        <div
+          className="border rounded-lg p-4 mb-4 text-sm"
+          style={{
+            borderColor: 'rgba(255, 149, 0, 0.28)',
+            background: 'rgba(255, 149, 0, 0.08)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          This repository has disabled {mergeMethodLabel}, so the selected merge method is not available.
+        </div>
+      )}
+
+      {pr.state === 'open' && !pr.merged && canAttemptMerge && (
         <div className="border rounded-lg p-4 mb-4 flex items-center gap-3 flex-wrap"
              style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
           <select

@@ -56,6 +56,12 @@ export async function setCachedValue<T>(key: string, value: T): Promise<void> {
     await cacheStore.save();
 }
 
+export async function deleteCachedValue(key: string): Promise<void> {
+    memoryCache.delete(key);
+    await cacheStore.delete(key);
+    await cacheStore.save();
+}
+
 export async function clearCachedValuesByPrefix(prefix: string): Promise<void> {
     const keys = await cacheStore.keys();
     for (const key of keys) {

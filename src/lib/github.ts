@@ -3,6 +3,7 @@ import { useAuthStore } from "../stores/authStore";
 import { APP_USER_AGENT } from "./appMeta";
 import {
     clearCachedValuesByPrefix,
+    deleteCachedValue,
     getCachedValue,
     getStaleCachedValue,
     setCachedValue,
@@ -53,6 +54,10 @@ async function ghFetchRaw(path: string): Promise<string> {
 function buildGitHubCacheKey(key: string): string {
     const login = useAuthStore.getState().user?.login || "anonymous";
     return `${GITHUB_CACHE_PREFIX}${login}:${key}`;
+}
+
+async function invalidateGitHubCacheKeys(keys: string[]): Promise<void> {
+    await Promise.all(keys.map((key) => deleteCachedValue(buildGitHubCacheKey(key))));
 }
 
 async function fetchWithCache<T>(
@@ -120,6 +125,13 @@ export interface GitHubRepo {
     disabled: boolean;
     size: number;
     html_url: string;
+    permissions?: {
+        admin?: boolean;
+        maintain?: boolean;
+        push?: boolean;
+        triage?: boolean;
+        pull?: boolean;
+    };
     security_and_analysis?: {
         advanced_security?: { status: string };
         secret_scanning?: { status: string };
@@ -209,6 +221,8 @@ export interface GitHubPRDetail {
     title: string;
     state: "open" | "closed";
     merged: boolean;
+    mergeable?: boolean | null;
+    mergeable_state?: string;
     user: { login: string; avatar_url: string };
     created_at: string;
     updated_at: string;
@@ -489,9 +503,19 @@ export async function fetchPRDetail(
     owner: string,
     name: string,
     number: number,
+    options?: { force?: boolean },
 ): Promise<GitHubPRDetail> {
+    const cacheKey = `repo:${owner}/${name}:pr:${number}`;
+    if (options?.force) {
+        const fresh = await ghFetch<GitHubPRDetail>(
+            `/repos/${owner}/${name}/pulls/${number}`,
+        );
+        await setCachedValue(buildGitHubCacheKey(cacheKey), fresh);
+        return fresh;
+    }
+
     return fetchWithCache(
-        `repo:${owner}/${name}:pr:${number}`,
+        cacheKey,
         CACHE_TTL_SHORT,
         () => ghFetch<GitHubPRDetail>(`/repos/${owner}/${name}/pulls/${number}`),
     );
@@ -631,10 +655,24 @@ export async function mergePR(
     number: number,
     method: "merge" | "squash" | "rebase" = "merge",
 ): Promise<{ merged: boolean; message: string }> {
-    return ghPut<{ merged: boolean; message: string }>(
+    const result = await ghPut<{ merged: boolean; message: string }>(
         `/repos/${owner}/${name}/pulls/${number}/merge`,
         { merge_method: method },
     );
+
+    if (result.merged) {
+        const login = useAuthStore.getState().user?.login;
+        const keys = [
+            `repo:${owner}/${name}:pr:${number}`,
+            `repo:${owner}/${name}:prs`,
+        ];
+        if (login) {
+            keys.push(`prs:user:${login}`);
+        }
+        await invalidateGitHubCacheKeys(keys);
+    }
+
+    return result;
 }
 
 export async function createPR(
