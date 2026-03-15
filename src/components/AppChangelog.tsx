@@ -13,6 +13,15 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.0.9',
+    date: 'March 2026',
+    changes: [
+      { type: 'fix', text: 'Fixed pull request merging so the PR status now refreshes immediately in the client after GitHub completes the merge' },
+      { type: 'improvement', text: 'Cleared stale cached pull request data after a successful merge so merged PRs no longer remain stuck as open' },
+      { type: 'improvement', text: 'Improved merge failure messages for blocked methods, conflicts, and branch protection rejections' },
+    ],
+  },
+  {
     version: '1.0.8-fix',
     date: 'March 2026',
     changes: [

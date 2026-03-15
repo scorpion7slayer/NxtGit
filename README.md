@@ -51,6 +51,12 @@ Download the latest release from the [Releases page](https://github.com/scorpion
 
 ## Latest Release Notes
 
+### v1.0.9
+
+- Fix: the pull request detail view now refreshes immediately after GitHub completes the merge
+- Improvement: stale pull request cache entries are cleared after merging so merged PRs no longer stay stuck as open in the app
+- Improvement: merge failures now explain blocked methods, conflicts, and branch protection issues more clearly
+
 ### v1.0.8-fix
 
 - Fix: restored the Windows 11 ARM64 release to publish both native `.msi` and `.exe` installers
