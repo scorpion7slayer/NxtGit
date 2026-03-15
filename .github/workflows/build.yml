@@ -42,7 +42,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v6
               with:
-                  node-version: "20"
+                  node-version: "22"
 
             - name: Install Rust stable
               uses: dtolnay/rust-toolchain@stable
@@ -66,7 +66,19 @@ jobs:
                   sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libgtk-layer-shell-dev xdg-utils
 
             - name: Install node dependencies
-              run: npm ci
+              shell: bash
+              run: |
+                  for attempt in 1 2 3; do
+                    if npm ci --no-audit; then
+                      exit 0
+                    fi
+                    echo "npm ci failed on attempt ${attempt}"
+                    if [ "$attempt" -lt 3 ]; then
+                      npm cache verify || true
+                      sleep 10
+                    fi
+                  done
+                  exit 1
 
             - name: Validate updater public key
               if: inputs.release-id != ''
