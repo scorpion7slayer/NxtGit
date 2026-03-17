@@ -8,3 +8,4 @@ node_modules
 dist
 src-tauri/target
 .conductor/
+.DS_Store
