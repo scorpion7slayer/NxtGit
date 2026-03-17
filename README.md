@@ -2,8 +2,7 @@
 
 A desktop Git client with AI built in. Browse repos, review code, chat with AI, edit files, and push — all from one app.
 
-<!-- Upload nxtgit.mp4 to a GitHub issue/comment, then paste the generated URL below -->
-<video src="https://github.com/user-attachments/assets/REPLACE_WITH_UPLOADED_VIDEO_ID" autoplay loop muted playsinline></video>
+[![Watch the demo](https://img.shields.io/badge/%E2%96%B6%EF%B8%8F_Watch_Demo-NxtGit-blue?style=for-the-badge&logo=googledrive)](https://drive.google.com/file/d/1ty_v4BrPzng69dHKhFk14sGwel8kXlQ2/view?usp=sharing)
 
 ## Why NxtGit?
 
