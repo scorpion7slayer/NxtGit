@@ -1,204 +1,122 @@
 # NxtGit
 
-AI-native Git client built with Tauri v2, full GitHub integration, multi-provider AI chat, and an in-app updater.
+A desktop Git client with AI built in. Browse repos, review code, chat with AI, edit files, and push — all from one app.
 
-![NxtGit](screenshot.png)
+<!-- Upload nxtgit.mp4 to a GitHub issue/comment, then paste the generated URL below -->
+<video src="https://github.com/user-attachments/assets/REPLACE_WITH_UPLOADED_VIDEO_ID" autoplay loop muted playsinline></video>
 
-## Quick Look
+## Why NxtGit?
 
-- Browse repositories, issues, pull requests, releases, commits, workflow runs, and file trees from one desktop app
-- Use AI chat and AI review without leaving the Git context
-- Preview markdown and images directly in the repository browser, and launch HTML files through GitHub Pages
-- Move faster with configurable keyboard shortcuts and cached repo data for slower or unstable connections
+I got tired of switching between GitHub, my editor, and ChatGPT while working on projects. NxtGit puts everything in one window: your repos, issues, PRs, an AI chat that understands your code, and a file editor that commits straight to GitHub.
 
-## Features
+It runs natively on macOS, Windows, and Linux thanks to Tauri (Rust backend, React frontend).
 
-- **AI Chat** — Full conversational chat with streaming, thinking blocks, file & repo attachments
-- **Extended Thinking** — See the AI's reasoning process in real-time (Anthropic, DeepSeek, OpenAI o-series, Ollama)
-- **8 AI Providers** — GitHub Copilot, OpenRouter, Anthropic, OpenAI, Ollama (local & cloud), Moonshot, Kilocode, MiniMax
-- **Smart Code Review** — AI-powered code reviews with streaming markdown output
-- **In-App File Editor** — Edit files, commit & push directly from the app (like github.com)
-- **Image Preview** — View images (PNG, JPG, GIF, SVG, WebP) inline in the file browser
-- **Markdown Preview** — Toggle between code and rendered markdown preview
-- **GitHub Pages Preview** — Create, open, rebuild, or disable GitHub Pages to preview repository HTML with real assets and JavaScript
-- **Commit & Push** — Create, edit, and delete files with commit messages — no terminal needed
-- **Branch Management** — Switch branches, view protection status, create new branches
-- **Repository Browser** — Browse repos, issues, PRs, commits, releases, contributors, and file trees
-- **GitHub Actions** — View workflow runs, jobs, and step details
-- **GitHub Changelog** — Read GitHub's changelog with full content, images, and videos in-app
-- **Global Search** — Search repositories and users across GitHub
-- **Keyboard Shortcuts** — Customizable navigation shortcuts from Settings
-- **Offline Cache** — Cached repository lists, repo detail, file trees, issues, pull requests, commits, and more
-- **User Profiles** — View user profiles with repos, stats, and social links
-- **Liquid Glass UI** — macOS Tahoe (26+) only, with solid fallbacks on earlier macOS versions and other platforms
-- **GitHub OAuth** — Device flow authentication for GitHub + separate Copilot OAuth
-- **Persistent Chat** — Conversations saved locally, window state remembered across sessions
-- **Ollama Support** — Local models with configurable URL, or Ollama Cloud with API key
-- **In-App Updates** — Detect, download, install, and relaunch when a new version is available
+## What you can do
 
-## Downloads
+- **Browse everything** — repos, files, issues, PRs, commits, releases, workflow runs, contributor profiles
+- **Chat with AI** — attach files or whole repos for context, stream responses in real-time, see the model's thinking process
+- **Review code** — paste a snippet, get an instant AI review with bug/security/perf suggestions
+- **Edit & commit** — open any file, edit it in-app, write a commit message, push. No terminal
+- **Preview files** — rendered markdown, inline images, GitHub Pages preview for HTML
+- **Search GitHub** — find repos and users from the search page
+- **Stay updated** — GitHub status page, notifications, app changelog, auto-updates
 
-| Platform | Architecture | Format |
-| -------- | ------------ | ------ |
-| **macOS** | Apple Silicon (M1+)/Intel (x86_64) | `.dmg` |
-| **Windows** | x64 | `.msi` / `.exe` |
-| **Windows** | x86 (32-bit) | `.msi` / `.exe` |
-| **Windows** | ARM64 | `.msi` / `.exe` |
-| **Linux** | x64 | `.deb` / `.AppImage` |
-| **Linux** | ARM64 | `.deb` / `.AppImage` |
+## AI providers
 
-Download the latest release from the [Releases page](https://github.com/scorpion7slayer/NxtGit/releases).
+NxtGit works with 8 providers. Pick whichever you already use:
 
-## Latest Release Notes
+| Provider | How it connects | Thinking support |
+| --- | --- | --- |
+| GitHub Copilot | OAuth (free if you have Copilot) | o-series reasoning |
+| OpenRouter | API key | All reasoning models |
+| Anthropic | API key | Extended thinking |
+| OpenAI | API key | o1/o3/o4 reasoning |
+| Ollama | Local, no key needed | Any model |
+| Moonshot | API key | — |
+| Kilocode | API key | — |
+| MiniMax | API key | — |
 
-### v1.0.9
+Keys are stored locally on your machine via your OS secure storage. Nothing leaves your device except API calls.
 
-- Fix: the pull request detail view now refreshes immediately after GitHub completes the merge
-- Improvement: stale pull request cache entries are cleared after merging so merged PRs no longer stay stuck as open in the app
-- Improvement: merge failures now explain blocked methods, conflicts, and branch protection issues more clearly
+## Get it
 
-### v1.0.8-fix
+Download from the [Releases page](https://github.com/scorpion7slayer/NxtGit/releases).
 
-- Fix: restored the Windows 11 ARM64 release to publish both native `.msi` and `.exe` installers
-- Fix: tightened the release gate so Windows ARM64 cannot publish without both installer formats
-- Fix: tightened the release gate so Linux ARM64 cannot publish unless both `.deb` and `.AppImage` are present
-- Fix: updated the Rust lockfile to `quinn-proto 0.11.14` for the published security advisory
+| Platform | What's available |
+| --- | --- |
+| macOS | `.dmg` (Apple Silicon + Intel) |
+| Windows | `.msi` / `.exe` (x64, x86, ARM64) |
+| Linux | `.deb` / `.AppImage` (x64, ARM64) |
 
-### v1.0.8
+## Getting started
 
-- Feature: added customizable keyboard shortcuts for the main navigation from Settings
-- Feature: added persistent offline caching for repositories, repo data, workflow runs, notifications, and GitHub status
-- Feature: replaced the fragile in-app HTML runtime preview with a GitHub Pages creation/open/rebuild/disable flow
-- Improvement: added visible website and GitHub Pages URLs before opening a repository preview
+1. Install and open NxtGit
+2. Click **Sign in with GitHub** — a device code flow opens in your browser
+3. After login, a quick walkthrough shows you around the app
+4. Head to **Settings** to add AI provider keys if you want to use the chat/review features
 
-### v1.0.5-fix
+That's it. Your repos load automatically.
 
-- Fix: added an optional interactive HTML preview mode for repository JavaScript in a sandboxed iframe
-- Fix: improved packaged HTML preview support for `@import`, inline style URLs, `srcset`, and extra asset references
+## Build from source
 
-### v1.0.5
-
-- Fix: added updater fallback logic so apps on `1.0.4` can detect and install `1.0.4-fix` releases
-
-### v1.0.4-fix
-
-- Fix: restored HTML preview in packaged builds
-- Fix: used native flag emoji on macOS and fallback flags on platforms that render them poorly
-- Improvement: hardened HTML preview sanitization to avoid executing repository JavaScript inside the app
-- Fix: restored stylesheet loading in packaged HTML preview
-
-## Tech Stack
-
-| Layer | Technology |
-| ----- | ---------- |
-| **Frontend** | React 18 + TypeScript + Tailwind CSS 3 + Vite 5 |
-| **Backend** | Rust (Tauri v2) |
-| **State** | Zustand v4 + Tauri Store (persistent) |
-| **AI Streaming** | Direct SSE/NDJSON via ReadableStream |
-| **Markdown** | react-markdown + remark-gfm + react-syntax-highlighter |
-| **Design** | Liquid Glass on macOS Tahoe (26+) with platform fallbacks |
-
-## AI Providers
-
-| Provider | Thinking Support | Auth |
-| -------- | --------------- | ---- |
-| **GitHub Copilot** | o-series `reasoning_content` | OAuth device flow |
-| **OpenRouter** | `reasoning_details` + `reasoning` budget | API key |
-| **Anthropic** | Extended thinking (`thinking` blocks) | API key |
-| **OpenAI** | `reasoning_effort` for o1/o3/o4 | API key |
-| **Ollama** | `think: true` (native NDJSON) | Optional (cloud) |
-| **Moonshot** | `<think>` tags | API key |
-| **Kilocode** | — | API key |
-| **MiniMax** | — | API key |
-
-## Getting Started
-
-### Prerequisites
-
-- Windows 10+ / macOS 14+ / Linux (Ubuntu 22.04+)
-- Node.js 18+
-- Rust toolchain (edition 2021, 1.77.2+)
-
-### Installation
+You need Node.js 18+, Rust 1.77.2+, and the Tauri CLI.
 
 ```bash
 git clone https://github.com/scorpion7slayer/NxtGit.git
 cd NxtGit
-
-npm install          # Install frontend dependencies
-npm run tauri-dev    # Dev mode: Vite + Tauri Rust backend
-npm run tauri-build  # Production build
+npm install
+npm run tauri-dev    # dev mode
+npm run tauri-build  # production build
 ```
 
-### Configuration
+Set `VITE_GITHUB_CLIENT_ID` in a `.env` file for GitHub OAuth (create an OAuth App with Device Flow enabled in [GitHub Developer Settings](https://github.com/settings/developers)).
 
-**GitHub OAuth** — Create a GitHub OAuth App with Device Flow enabled:
+## Tech stack
 
-1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
-2. Create a new OAuth App, enable Device Flow
-3. Set `VITE_GITHUB_CLIENT_ID` in your `.env`
+| | |
+| --- | --- |
+| Frontend | React 18, TypeScript, Tailwind CSS, Vite |
+| Backend | Rust via Tauri v2 |
+| State | Zustand + Tauri Store (persisted) |
+| AI | Direct SSE/NDJSON streaming via ReadableStream |
+| Design | Liquid Glass on macOS Tahoe 26+, solid fallbacks elsewhere |
 
-**AI Providers** — Configure in Settings:
+## Project structure
 
-- API keys are stored locally via Tauri Store (never shared)
-- GitHub Copilot uses a separate OAuth device flow
-- Ollama works locally without a key; add one for Ollama Cloud
-
-## Usage
-
-1. **Login** — Authenticate with GitHub via device flow
-2. **Browse** — Explore repositories, files, issues, and pull requests
-3. **Edit** — Click Edit on any file, modify it, and commit directly
-4. **Preview** — Toggle markdown preview, view images inline
-5. **Chat** — Open AI Chat, pick a provider/model, start a conversation
-6. **Review** — Paste code in AI Review for streaming code analysis
-7. **Search** — Find repositories and users with Global Search
-
-## Architecture
-
-```text
-NxtGit/
-├── src/                        # React frontend
-│   ├── components/             # UI components (Chat, Dashboard, RepoDetail, ...)
-│   ├── stores/                 # Zustand stores (auth, persisted via Tauri Store)
-│   └── lib/
-│       ├── ai.ts               # AI providers, streaming, thinking, Copilot OAuth
-│       ├── github.ts           # GitHub API client (repos, PRs, issues, file CRUD)
-│       └── updater.ts          # Shared updater check/install helpers
-├── src-tauri/                  # Rust backend
-│   ├── src/lib.rs              # Plugin registration + macOS platform detection
-│   ├── tauri.conf.json         # Window config, CSP, updater endpoints, bundle targets
-│   └── capabilities/           # Permission allowlists (HTTP domains, plugins)
-├── .github/workflows/          # CI/CD
-│   ├── release.yml             # Multi-platform tagged release + updater asset verification
-│   └── build.yml               # Reusable build workflow with macOS notarization fallback
-└── package.json
+```
+src/                    React frontend
+  components/           All UI components
+  stores/               Zustand stores (auth, etc.)
+  lib/
+    ai.ts               AI providers, streaming, thinking
+    github.ts           GitHub API (repos, PRs, issues, file CRUD)
+src-tauri/              Rust backend (Tauri v2)
+  src/lib.rs            Plugin setup + macOS platform detection
+  tauri.conf.json       Window config, CSP, updater
+.github/workflows/      CI/CD (build, test, lint, release)
 ```
 
-## Security
+## Recent changes
 
-- CSP restricted to whitelisted API domains
-- HTTP permissions via Tauri capability allowlists
-- OAuth `verification_uri` validated before opening
-- Ollama URL validated (http/https only) to prevent SSRF
-- Tokens stored via Tauri Store (OS-level secure storage), not localStorage
-- HTML content sanitized with DOMPurify
+**v1.1.0** — Onboarding tour, Help & Feedback page, AI thinking mode, repo filters, animations, smarter search
+
+**v1.0.9** — PR view refreshes after merge, clearer merge error messages
+
+**v1.0.8** — Keyboard shortcuts, offline caching, GitHub Pages preview flow
+
+See the full history in the [Releases page](https://github.com/scorpion7slayer/NxtGit/releases) or in-app via Changelog.
 
 ## Contributing
 
-Built for [Flavortown](https://flavortown.hackclub.com/) — a Hack Club program for high schoolers.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork it
+2. Create a branch (`git checkout -b my-feature`)
+3. Commit and push
+4. Open a PR
 
 ## License
 
-MIT License — see [LICENSE](LICENSE)
+MIT — see [LICENSE](LICENSE)
 
 ---
 
-Built with love by @scorpion7slayer
-
+Built by [@scorpion7slayer](https://github.com/scorpion7slayer)

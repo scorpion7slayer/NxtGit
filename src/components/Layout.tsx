@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard,
@@ -13,11 +13,30 @@ import {
     Search,
     Sparkles,
     Bell,
+    LifeBuoy,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
+import {
+    DEFAULT_KEYBOARD_SHORTCUTS,
+    type ShortcutId,
+} from "../lib/preferences";
 import logo from "../assets/logo.svg";
 import UpdateBanner from "./UpdateBanner";
 import WindowDragRegion from "./WindowDragRegion";
+
+const PATH_TO_SHORTCUT: Record<string, ShortcutId> = {
+    "/": "goDashboard",
+    "/repos": "goRepositories",
+    "/issues": "goIssues",
+    "/prs": "goPullRequests",
+    "/chat": "goChat",
+    "/ai-review": "goAIReview",
+    "/status": "goStatus",
+    "/search": "goSearch",
+    "/notifications": "goNotifications",
+    "/settings": "goSettings",
+    "/support": "goSupport",
+};
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -26,6 +45,44 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+    const [showShortcuts, setShowShortcuts] = useState(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Meta" || e.key === "Control") {
+                setShowShortcuts(true);
+            }
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.key === "Meta" || e.key === "Control") {
+                setShowShortcuts(false);
+            }
+        };
+        const handleBlur = () => setShowShortcuts(false);
+        window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("keyup", handleKeyUp);
+        window.addEventListener("blur", handleBlur);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("keyup", handleKeyUp);
+            window.removeEventListener("blur", handleBlur);
+        };
+    }, []);
+
+    const isMac = navigator.userAgent.includes("Macintosh");
+    const shortcutFor = (path: string): string | null => {
+        if (!showShortcuts) return null;
+        const id = PATH_TO_SHORTCUT[path];
+        if (!id) return null;
+        const raw = DEFAULT_KEYBOARD_SHORTCUTS[id];
+        // Show only the key part (after Mod+), since Cmd/Ctrl is already held
+        const parts = raw.split("+").filter(p => p !== "Mod");
+        const display = parts.map(p => {
+            if (p === "Shift") return isMac ? "⇧" : "Shift+";
+            return p;
+        }).join("");
+        return display;
+    };
 
     return (
         <div
@@ -67,34 +124,46 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         icon={LayoutDashboard}
                         label="Dashboard"
                         end
+                        shortcutHint={shortcutFor("/")}
+                        tourId="dashboard"
                     />
                     <NavItem
                         to="/repos"
                         icon={GitBranch}
                         label="Repositories"
+                        shortcutHint={shortcutFor("/repos")}
+                        tourId="repos"
                     />
-                    <NavItem to="/issues" icon={CircleDot} label="Issues" />
+                    <NavItem to="/issues" icon={CircleDot} label="Issues" shortcutHint={shortcutFor("/issues")} tourId="issues" />
                     <NavItem
                         to="/prs"
                         icon={GitPullRequest}
                         label="Pull Requests"
+                        shortcutHint={shortcutFor("/prs")}
+                        tourId="prs"
                     />
-                    <NavItem to="/chat" icon={Bot} label="Chat" />
+                    <NavItem to="/chat" icon={Bot} label="Chat" shortcutHint={shortcutFor("/chat")} tourId="chat" />
                     <NavItem
                         to="/ai-review"
                         icon={MessageSquare}
                         label="AI Review"
+                        shortcutHint={shortcutFor("/ai-review")}
+                        tourId="ai-review"
                     />
                     <NavItem
                         to="/status"
                         icon={Activity}
                         label="GitHub Status"
+                        shortcutHint={shortcutFor("/status")}
+                        tourId="status"
                     />
-                    <NavItem to="/search" icon={Search} label="Search" />
+                    <NavItem to="/search" icon={Search} label="Search" shortcutHint={shortcutFor("/search")} tourId="search" />
                     <NavItem
                         to="/notifications"
                         icon={Bell}
                         label="Notifications"
+                        shortcutHint={shortcutFor("/notifications")}
+                        tourId="notifications"
                     />
                 </nav>
 
@@ -130,7 +199,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         icon={Sparkles}
                         label="Changelog"
                     />
-                    <NavItem to="/settings" icon={Settings} label="Settings" />
+                    <NavItem
+                        to="/support"
+                        icon={LifeBuoy}
+                        label="Help & Feedback"
+                        shortcutHint={shortcutFor("/support")}
+                    />
+                    <NavItem to="/settings" icon={Settings} label="Settings" shortcutHint={shortcutFor("/settings")} tourId="settings" />
                     <button
                         onClick={logout}
                         className="nav-item w-full text-left"
@@ -160,16 +235,31 @@ interface NavItemProps {
     icon: React.ElementType;
     label: string;
     end?: boolean;
+    shortcutHint?: string | null;
+    tourId?: string;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, end }) => (
+const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, end, shortcutHint, tourId }) => (
     <NavLink
         to={to}
         end={end}
         className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+        {...(tourId ? { "data-tour": tourId } : {})}
     >
-        <Icon className="w-4 h-4" />
-        <span>{label}</span>
+        <Icon className="w-4 h-4 flex-shrink-0" />
+        <span className="flex-1 truncate">{label}</span>
+        {shortcutHint !== undefined && (
+            <span
+                className={`shortcut-hint text-[11px] px-1.5 py-0.5 rounded font-mono flex-shrink-0 min-w-[22px] text-center${shortcutHint ? "" : " invisible"}`}
+                style={{
+                    background: "var(--bg-tertiary)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border)",
+                }}
+            >
+                {shortcutHint || "\u00A0"}
+            </span>
+        )}
     </NavLink>
 );
 

@@ -3,6 +3,7 @@ import { Github, AlertCircle, Copy, CheckCircle } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { fetch } from "@tauri-apps/plugin-http";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAuthStore } from "../stores/authStore";
 import logo from "../assets/logo.svg";
 
@@ -121,6 +122,8 @@ const Login: React.FC = () => {
                 }
 
                 const user = await userResponse.json();
+                // Bring app to front after successful auth
+                getCurrentWindow().setFocus().catch(() => {});
                 await setAuth(tokenData.access_token, {
                     id: user.id,
                     login: user.login,
@@ -197,13 +200,12 @@ const Login: React.FC = () => {
             try {
                 await writeText(data.user_code);
                 setCopied(true);
-                setTimeout(() => setCopied(false), 3000);
+                setTimeout(() => setCopied(false), 5000);
             } catch {
                 /* clipboard may not be available */
             }
 
-            await open(data.verification_uri);
-
+            // Don't auto-open browser — let the user see the code is copied first
             const interval = (data.interval || 5) * 1000;
             const expiresAt = Date.now() + data.expires_in * 1000;
             pollingRef.current = setTimeout(
@@ -266,13 +268,23 @@ const Login: React.FC = () => {
                 )}
 
                 {deviceData ? (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                         <div className="text-center">
+                            <div
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mb-3"
+                                style={{
+                                    background: "rgba(52, 199, 89, 0.1)",
+                                    color: "var(--success)",
+                                }}
+                            >
+                                <CheckCircle className="w-3 h-3" />
+                                Code copied to clipboard
+                            </div>
                             <p
                                 className="text-sm mb-3"
                                 style={{ color: "var(--text-secondary)" }}
                             >
-                                Enter this code on GitHub:
+                                Paste it on GitHub to authorize NxtGit:
                             </p>
                             <button
                                 onClick={copyCode}
@@ -299,12 +311,20 @@ const Login: React.FC = () => {
                                 )}
                             </button>
                             <p
-                                className="text-xs mt-2"
+                                className="text-xs mt-1.5"
                                 style={{ color: "var(--text-tertiary)" }}
                             >
-                                {copied ? "Copied!" : "Click to copy"}
+                                {copied ? "Copied!" : "Click to copy again"}
                             </p>
                         </div>
+
+                        <button
+                            onClick={() => open(deviceData.verification_uri)}
+                            className="btn-primary w-full flex items-center justify-center gap-2 py-2.5"
+                        >
+                            <Github className="w-4 h-4" />
+                            Open GitHub to paste the code
+                        </button>
 
                         <div
                             className="flex items-center gap-2.5 justify-center"
@@ -330,14 +350,6 @@ const Login: React.FC = () => {
                                 {status}
                             </p>
                         )}
-
-                        <button
-                            onClick={() => open(deviceData.verification_uri)}
-                            className="btn-secondary w-full flex items-center justify-center gap-2 py-2.5"
-                        >
-                            <Github className="w-4 h-4" />
-                            Open GitHub
-                        </button>
 
                         <button
                             onClick={() => {

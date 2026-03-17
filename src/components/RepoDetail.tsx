@@ -280,7 +280,7 @@ function ResponsiveTabs({
                     </button>
                     {moreOpen && (
                         <div
-                            className="absolute right-0 top-full mt-1 py-1 rounded-lg border shadow-lg z-50 min-w-[180px]"
+                            className="glass-dropdown absolute right-0 top-full mt-1 py-1 rounded-lg border shadow-lg z-50 min-w-[180px]"
                             style={{
                                 background: "var(--bg-secondary)",
                                 borderColor: "var(--border)",
@@ -321,6 +321,9 @@ const RepoDetail: React.FC = () => {
     const [branches, setBranches] = useState<GitHubBranch[]>([]);
     const [selectedBranch, setSelectedBranch] = useState("");
     const [branchOpen, setBranchOpen] = useState(false);
+
+    // File browser path (lifted from CodeTab so the back arrow can use it)
+    const [currentPath, setCurrentPath] = useState("");
 
     // Star / Watch / Fork state
     const [starred, setStarred] = useState(false);
@@ -453,8 +456,17 @@ const RepoDetail: React.FC = () => {
         <div className="p-6 w-full">
             <div className="flex items-start gap-3 mb-4">
                 <button
-                    onClick={() => navigate("/repos")}
+                    onClick={() => {
+                        if (tab === "code" && currentPath) {
+                            const parts = currentPath.split("/");
+                            parts.pop();
+                            setCurrentPath(parts.join("/"));
+                        } else {
+                            navigate("/repos");
+                        }
+                    }}
                     className="p-1 rounded hover:bg-[var(--bg-tertiary)] mt-0.5"
+                    title={tab === "code" && currentPath ? "Go up one folder" : "Back to repositories"}
                 >
                     <ArrowLeft
                         className="w-4 h-4"
@@ -791,6 +803,8 @@ const RepoDetail: React.FC = () => {
                     name={name}
                     branch={selectedBranch}
                     homepage={repo.homepage}
+                    currentPath={currentPath}
+                    onNavigate={setCurrentPath}
                 />
             )}
             {tab === "issues" && <IssuesTab owner={owner} name={name} />}
@@ -1382,14 +1396,17 @@ const CodeTab: React.FC<{
     name: string;
     branch: string;
     homepage?: string | null;
+    currentPath: string;
+    onNavigate: (path: string) => void;
 }> = ({
     owner,
     name,
     branch,
     homepage,
+    currentPath,
+    onNavigate: setCurrentPath,
 }) => {
     const [contents, setContents] = useState<GitHubContent[]>([]);
-    const [currentPath, setCurrentPath] = useState("");
     const [fileContent, setFileContent] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [isFileView, setIsFileView] = useState(false);
@@ -1810,6 +1827,16 @@ const CodeTab: React.FC<{
                                         remarkPlugins={[remarkGfm]}
                                         rehypePlugins={[rehypeRaw]}
                                         components={{
+                                            a: ({ href, children, ...props }) => (
+                                                <a
+                                                    href={href}
+                                                    onClick={(e) => { e.preventDefault(); if (href) open(href); }}
+                                                    style={{ color: "var(--accent)", cursor: "pointer" }}
+                                                    {...props}
+                                                >
+                                                    {children}
+                                                </a>
+                                            ),
                                             img: ({ src, alt, ...props }) => {
                                                 const resolved =
                                                     src &&
@@ -3149,7 +3176,22 @@ const ReleasesTab: React.FC<{ owner: string; name: string }> = ({
                                         {rel.body && (
                                             <div className="border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
                                                 <div className="prose prose-sm max-w-none text-sm" style={{ color: "var(--text-secondary)" }}>
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[remarkGfm]}
+                                                        rehypePlugins={[rehypeRaw]}
+                                                        components={{
+                                                            a: ({ href, children, ...props }) => (
+                                                                <a
+                                                                    href={href}
+                                                                    onClick={(e) => { e.preventDefault(); if (href) open(href); }}
+                                                                    style={{ color: "var(--accent)", cursor: "pointer" }}
+                                                                    {...props}
+                                                                >
+                                                                    {children}
+                                                                </a>
+                                                            ),
+                                                        }}
+                                                    >
                                                         {rel.body}
                                                     </ReactMarkdown>
                                                 </div>

@@ -10,6 +10,8 @@ import {
     RefreshCw,
     Keyboard,
     RotateCcw,
+    ExternalLink,
+    Play,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import {
@@ -29,6 +31,7 @@ import {
 } from "../lib/github";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { getVersion } from "@tauri-apps/api/app";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { relaunch } from "@tauri-apps/plugin-process";
 import {
     formatUpdaterError,
@@ -252,17 +255,18 @@ const Settings: React.FC = () => {
             try {
                 await writeText(deviceData.user_code);
                 setCopilotCopied(true);
-                setTimeout(() => setCopilotCopied(false), 3000);
+                setTimeout(() => setCopilotCopied(false), 5000);
             } catch {
                 /* clipboard may not be available */
             }
 
-            await open(deviceData.verification_uri);
-
+            // Don't auto-open browser — let the user see the code is copied first
             const interval = (deviceData.interval || 5) * 1000;
             const expiresAt = Date.now() + deviceData.expires_in * 1000;
 
             await pollCopilotToken(deviceData.device_code, interval, expiresAt);
+            // Bring app to front after successful auth
+            getCurrentWindow().setFocus().catch(() => {});
             setCopilotDeviceData(null);
         } catch (e) {
             if (!cancelRef.current) {
@@ -531,26 +535,38 @@ const Settings: React.FC = () => {
 
                                 {copilotDeviceData && (
                                     <div
-                                        className="mt-3 p-3 rounded-lg"
+                                        className="mt-3 p-4 rounded-xl border"
                                         style={{
                                             background: "var(--bg-secondary)",
+                                            borderColor: "var(--border)",
                                         }}
                                     >
+                                        <div
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium mb-3"
+                                            style={{
+                                                background: "rgba(52, 199, 89, 0.1)",
+                                                color: "var(--success)",
+                                            }}
+                                        >
+                                            <CheckCircle className="w-3 h-3" />
+                                            Code copied to clipboard
+                                        </div>
                                         <p
-                                            className="text-xs mb-2"
+                                            className="text-xs mb-3"
                                             style={{
                                                 color: "var(--text-secondary)",
                                             }}
                                         >
-                                            Enter this code on GitHub:
+                                            Paste it on GitHub to authorize Copilot:
                                         </p>
-                                        <div className="flex items-center gap-2 mb-2">
+                                        <div className="flex items-center gap-2 mb-4">
                                             <code
-                                                className="text-lg font-mono font-bold tracking-widest px-3 py-1.5 rounded"
+                                                className="text-xl font-mono font-bold tracking-widest px-4 py-2 rounded-lg"
                                                 style={{
                                                     background:
                                                         "var(--bg-tertiary)",
                                                     color: "var(--accent)",
+                                                    border: "1px solid var(--border)",
                                                 }}
                                             >
                                                 {copilotDeviceData.user_code}
@@ -569,8 +585,8 @@ const Settings: React.FC = () => {
                                                         2000,
                                                     );
                                                 }}
-                                                className="p-1.5 rounded hover:bg-[var(--bg-tertiary)]"
-                                                title="Copy code"
+                                                className="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                                                title="Copy code again"
                                             >
                                                 {copilotCopied ? (
                                                     <CheckCircle
@@ -589,14 +605,34 @@ const Settings: React.FC = () => {
                                                 )}
                                             </button>
                                         </div>
-                                        <p
-                                            className="text-xs"
+                                        <button
+                                            onClick={() =>
+                                                open(
+                                                    copilotDeviceData.verification_uri,
+                                                )
+                                            }
+                                            className="btn-primary w-full flex items-center justify-center gap-2 py-2 text-xs mb-3"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            Open GitHub to paste the code
+                                        </button>
+                                        <div
+                                            className="flex items-center gap-2 justify-center"
                                             style={{
                                                 color: "var(--text-tertiary)",
                                             }}
                                         >
-                                            Waiting for authorization...
-                                        </p>
+                                            <div
+                                                className="w-3 h-3 border-2 rounded-full animate-spin"
+                                                style={{
+                                                    borderColor: "var(--border)",
+                                                    borderTopColor: "var(--accent)",
+                                                }}
+                                            />
+                                            <span className="text-xs">
+                                                Waiting for authorization...
+                                            </span>
+                                        </div>
                                     </div>
                                 )}
 
@@ -1005,6 +1041,21 @@ const Settings: React.FC = () => {
                 {/* Data */}
                 <Section title="Data">
                     <div className="space-y-2">
+                        <button
+                            onClick={() => {
+                                window.dispatchEvent(new Event("restart-onboarding"));
+                            }}
+                            className="w-full flex items-center justify-between p-3 rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
+                            style={{ background: "var(--bg-tertiary)" }}
+                        >
+                            <span style={{ color: "var(--text-primary)" }}>
+                                Replay tutorial
+                            </span>
+                            <Play
+                                className="w-4 h-4"
+                                style={{ color: "var(--text-tertiary)" }}
+                            />
+                        </button>
                         <button
                             onClick={clearCache}
                             disabled={clearingCache}

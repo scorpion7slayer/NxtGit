@@ -4,7 +4,7 @@ import {
   Search, GitBranch, Star, Lock, Users, Loader2, TrendingUp, Clock,
 } from 'lucide-react';
 import {
-  searchRepos, searchUsers, fetchTrendingRepos, langColor, timeAgo,
+  searchRepos, searchUsers, fetchTrendingRepos, fetchRepos, langColor, timeAgo,
   type GitHubRepo, type GitHubUserProfile,
 } from '../lib/github';
 
@@ -26,6 +26,8 @@ const GlobalSearch: React.FC = () => {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const localReposRef = useRef<GitHubRepo[]>([]);
+  const searchVersionRef = useRef(0);
 
   // Trending repos
   const [trending, setTrending] = useState<GitHubRepo[]>([]);
@@ -34,12 +36,15 @@ const GlobalSearch: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Load trending repos on mount + handle ?q= param
+  // Load trending repos + local repos on mount + handle ?q= param
   useEffect(() => {
     fetchTrendingRepos()
       .then(setTrending)
       .catch(() => {})
       .finally(() => setTrendingLoading(false));
+
+    // Pre-load user repos for instant local search
+    fetchRepos().then(r => { localReposRef.current = r; }).catch(() => {});
 
     const initialQuery = searchParams.get('q');
     if (initialQuery) {
@@ -53,26 +58,50 @@ const GlobalSearch: React.FC = () => {
     }
   }, []);
 
-  // Debounced autocomplete
+  // Instant local search + debounced API search
   const fetchSuggestions = useCallback((q: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!q.trim() || q.trim().length < 2) {
+    const trimmed = q.trim().toLowerCase();
+    const version = ++searchVersionRef.current;
+
+    if (!trimmed) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
-    debounceRef.current = setTimeout(async () => {
-      setSuggestionsLoading(true);
-      try {
-        const results = await searchRepos(q);
-        setSuggestions(results.slice(0, 8));
-        setShowSuggestions(true);
-        setSelectedIdx(-1);
-      } catch {
-        setSuggestions([]);
-      }
-      setSuggestionsLoading(false);
-    }, 300);
+
+    // Instant: search in locally cached repos
+    const local = localReposRef.current.filter(r =>
+      r.name.toLowerCase().includes(trimmed) ||
+      r.full_name.toLowerCase().includes(trimmed) ||
+      (r.description || '').toLowerCase().includes(trimmed)
+    ).slice(0, 5);
+
+    if (local.length > 0) {
+      setSuggestions(local);
+      setShowSuggestions(true);
+      setSelectedIdx(-1);
+    }
+
+    // Debounced: enrich with GitHub API results
+    if (trimmed.length >= 2) {
+      debounceRef.current = setTimeout(async () => {
+        setSuggestionsLoading(true);
+        try {
+          const remote = await searchRepos(q);
+          // Ignore if a newer search has started
+          if (searchVersionRef.current !== version) return;
+          const seenIds = new Set(local.map(r => r.id));
+          const merged = [...local, ...remote.filter(r => !seenIds.has(r.id))];
+          setSuggestions(merged.slice(0, 8));
+          setShowSuggestions(true);
+          setSelectedIdx(-1);
+        } catch {
+          // Keep local results on error
+        }
+        if (searchVersionRef.current === version) setSuggestionsLoading(false);
+      }, 150);
+    }
   }, []);
 
   // Close suggestions on outside click
@@ -134,6 +163,17 @@ const GlobalSearch: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
+    if (!val.trim()) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      searchVersionRef.current++;
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSuggestionsLoading(false);
+      setSearched(false);
+      setRepos([]);
+      setUsers([]);
+      return;
+    }
     fetchSuggestions(val);
   };
 
@@ -159,7 +199,7 @@ const GlobalSearch: React.FC = () => {
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+            onFocus={() => { if (query.trim() && suggestions.length > 0) setShowSuggestions(true); }}
             placeholder="Search repositories, users..."
             className="input-glass pl-9 w-full text-sm py-2.5"
             autoFocus
@@ -167,8 +207,8 @@ const GlobalSearch: React.FC = () => {
           {/* Autocomplete dropdown */}
           {showSuggestions && (suggestions.length > 0 || suggestionsLoading) && (
             <div ref={suggestionsRef}
-                 className="absolute top-full left-0 right-0 mt-1 z-50 border rounded-lg shadow-lg overflow-hidden backdrop-blur-none"
-                 style={{ borderColor: 'var(--border)', background: 'var(--bg-primary)', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
+                 className="absolute top-full left-0 right-0 mt-1 z-50 border rounded-lg shadow-lg animate-suggestions"
+                 style={{ borderColor: 'var(--border)', background: 'var(--bg-primary)' }}>
               {suggestionsLoading && suggestions.length === 0 ? (
                 <div className="flex items-center justify-center py-3">
                   <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-tertiary)' }} />
@@ -177,9 +217,10 @@ const GlobalSearch: React.FC = () => {
                 suggestions.map((repo, idx) => (
                   <div
                     key={repo.id}
-                    className="px-3 py-2 cursor-pointer transition-colors flex items-center gap-2"
+                    className="px-3 py-2 cursor-pointer transition-colors flex items-center gap-2 animate-suggestion-item"
                     style={{
                       background: idx === selectedIdx ? 'var(--bg-tertiary)' : 'transparent',
+                      animationDelay: `${idx * 30}ms`,
                     }}
                     onMouseEnter={() => setSelectedIdx(idx)}
                     onClick={() => {

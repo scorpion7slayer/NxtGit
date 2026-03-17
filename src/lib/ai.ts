@@ -521,6 +521,71 @@ export interface StreamCallbacks {
     onThinking?: (text: string) => void;
 }
 
+export type ThinkingLevel = "low" | "medium" | "high";
+
+export interface ThinkingConfig {
+    enabled: boolean;
+    level: ThinkingLevel;
+}
+
+// Returns whether the given provider+model combination supports thinking toggle
+export function supportsThinking(
+    providerId: string,
+    modelId: string,
+): boolean {
+    if (providerId === "anthropic") {
+        return (
+            modelId.includes("claude-3-7") ||
+            modelId.includes("claude-sonnet-4") ||
+            modelId.includes("claude-opus-4")
+        );
+    }
+    if (providerId === "openrouter") {
+        return (
+            modelId.includes("claude-sonnet-4") ||
+            modelId.includes("claude-opus-4") ||
+            modelId.includes("claude-3-7") ||
+            modelId.includes("deepseek-r1") ||
+            modelId.includes("/o1") ||
+            modelId.includes("/o3") ||
+            modelId.includes("/o4") ||
+            modelId.includes("qwq")
+        );
+    }
+    if (providerId === "openai" || providerId === "github-copilot") {
+        return (
+            modelId.startsWith("o1") ||
+            modelId.startsWith("o3") ||
+            modelId.startsWith("o4")
+        );
+    }
+    if (providerId === "ollama") {
+        return true; // Ollama supports think param for any model
+    }
+    return false;
+}
+
+// Returns whether the given provider+model supports thinking levels
+export function supportsThinkingLevels(
+    providerId: string,
+    modelId: string,
+): boolean {
+    if (providerId === "openai" || providerId === "github-copilot") {
+        return (
+            modelId.startsWith("o1") ||
+            modelId.startsWith("o3") ||
+            modelId.startsWith("o4")
+        );
+    }
+    if (providerId === "openrouter") {
+        return true; // OpenRouter normalizes effort for all reasoning models
+    }
+    if (providerId === "anthropic") {
+        return true; // budget_tokens can be adjusted
+    }
+    return false;
+}
+
 function buildHeaders(
     providerId: string,
     apiKey: string,
@@ -551,28 +616,42 @@ function buildHeaders(
     return base;
 }
 
+function thinkingBudgetForLevel(level: ThinkingLevel): number {
+    switch (level) {
+        case "low":
+            return 2048;
+        case "medium":
+            return 8192;
+        case "high":
+            return 16384;
+    }
+}
+
 function buildBody(
     providerId: string,
     modelId: string,
     messages: ChatMessage[],
+    thinking?: ThinkingConfig,
 ): string {
     if (providerId === "anthropic") {
         // Anthropic Messages API format
         const systemMsg = messages.find((m) => m.role === "system");
         const nonSystem = messages.filter((m) => m.role !== "system");
 
-        // Enable extended thinking for models that support it (claude-sonnet-4-5, claude-opus-4, etc.)
-        const supportsThinking =
+        const modelCanThink =
             modelId.includes("claude-3-7") ||
-            modelId.includes("claude-sonnet-4-5") ||
+            modelId.includes("claude-sonnet-4") ||
             modelId.includes("claude-opus-4");
+
+        const thinkingEnabled = modelCanThink && (thinking?.enabled ?? true);
+        const budget = thinkingBudgetForLevel(thinking?.level ?? "medium");
 
         return JSON.stringify({
             model: modelId,
-            max_tokens: supportsThinking ? 16384 : 4096,
+            max_tokens: thinkingEnabled ? Math.max(budget + 4096, 16384) : 4096,
             stream: true,
-            ...(supportsThinking
-                ? { thinking: { type: "enabled", budget_tokens: 8192 } }
+            ...(thinkingEnabled
+                ? { thinking: { type: "enabled", budget_tokens: budget } }
                 : {}),
             ...(systemMsg ? { system: systemMsg.content } : {}),
             messages: nonSystem.map((m) => ({
@@ -584,19 +663,27 @@ function buildBody(
 
     // OpenRouter: add reasoning config for models that support it
     if (providerId === "openrouter") {
-        const supportsReasoning =
+        const modelCanReason =
             modelId.includes("claude-sonnet-4-5") ||
             modelId.includes("claude-opus-4") ||
             modelId.includes("claude-3-7") ||
             modelId.includes("deepseek-r1") ||
             modelId.includes("/o1") ||
             modelId.includes("/o3") ||
-            modelId.includes("/o4");
+            modelId.includes("/o4") ||
+            modelId.includes("qwq");
+
+        const reasoningEnabled = modelCanReason && (thinking?.enabled ?? true);
+        const level = thinking?.level ?? "medium";
 
         return JSON.stringify({
             model: modelId,
             stream: true,
-            ...(supportsReasoning ? { reasoning: { max_tokens: 8000 } } : {}),
+            ...(reasoningEnabled
+                ? { reasoning: { effort: level } }
+                : modelCanReason
+                  ? { reasoning: { effort: "none" } }
+                  : {}),
             messages: messages.map((m) => ({
                 role: m.role,
                 content: m.content,
@@ -611,10 +698,14 @@ function buildBody(
             modelId.startsWith("o3") ||
             modelId.startsWith("o4");
 
+        const reasoningEnabled = isReasoningModel && (thinking?.enabled ?? true);
+
         return JSON.stringify({
             model: modelId,
             stream: true,
-            ...(isReasoningModel ? { reasoning_effort: "medium" } : {}),
+            ...(reasoningEnabled
+                ? { reasoning_effort: thinking?.level ?? "medium" }
+                : {}),
             messages: messages.map((m) => ({
                 role: m.role,
                 content: m.content,
@@ -624,10 +715,12 @@ function buildBody(
 
     // Ollama native API (not OpenAI compat) — use /api/chat with think param
     if (providerId === "ollama") {
+        const thinkEnabled = thinking?.enabled ?? true;
+
         return JSON.stringify({
             model: modelId,
             stream: true,
-            think: true,
+            think: thinkEnabled,
             messages: messages.map((m) => ({
                 role: m.role,
                 content: m.content,
@@ -659,6 +752,7 @@ export async function streamChat(
     onChunk: ((text: string) => void) | StreamCallbacks,
     signal?: AbortSignal,
     modelId?: string,
+    thinking?: ThinkingConfig,
 ): Promise<{ content: string; thinking: string }> {
     const callbacks: StreamCallbacks =
         typeof onChunk === "function" ? { onChunk } : onChunk;
@@ -685,7 +779,7 @@ export async function streamChat(
     const baseURL = await resolveBaseURL(provider);
     const url = chatEndpoint(baseURL, provider);
     const headers = buildHeaders(providerId, apiKey);
-    const body = buildBody(providerId, selectedModel, messages);
+    const body = buildBody(providerId, selectedModel, messages, thinking);
 
     const res = await tauriFetch(url, {
         method: "POST",

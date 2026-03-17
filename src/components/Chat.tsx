@@ -15,6 +15,7 @@ import {
     Brain,
     Trash2,
     GitBranch,
+    Zap,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import {
@@ -30,9 +31,13 @@ import {
     AI_PROVIDERS,
     getModelsForProvider,
     fetchProviderModels,
+    supportsThinking,
+    supportsThinkingLevels,
     type ChatMessage,
     type AIModel,
     type StreamCallbacks,
+    type ThinkingConfig,
+    type ThinkingLevel,
 } from "../lib/ai";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import MarkdownRenderer from "./MarkdownRenderer";
@@ -231,7 +236,7 @@ const FilePicker: React.FC<{
 
     return (
         <div
-            className="absolute bottom-full left-0 mb-2 w-80 rounded-lg border shadow-lg z-50"
+            className="glass-dropdown absolute bottom-full left-0 mb-2 w-80 rounded-lg border shadow-lg z-50"
             style={{
                 background: "var(--bg-secondary)",
                 borderColor: "var(--border)",
@@ -467,6 +472,9 @@ const Chat: React.FC = () => {
     const [showModelMenu, setShowModelMenu] = useState(false);
     const [showFilePicker, setShowFilePicker] = useState(false);
     const [attachments, setAttachments] = useState<Attachment[]>([]);
+    const [thinkingEnabled, setThinkingEnabled] = useState(true);
+    const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("medium");
+    const [showThinkingMenu, setShowThinkingMenu] = useState(false);
 
     // Refs
     const abortRef = useRef<AbortController | null>(null);
@@ -474,11 +482,14 @@ const Chat: React.FC = () => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const providerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<HTMLDivElement>(null);
+    const thinkingRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const shouldAutoScroll = useRef(true);
 
     const currentProvider = AI_PROVIDERS.find((p) => p.id === provider);
     const currentModel = models.find((m) => m.id === modelId);
+    const canThink = supportsThinking(provider, modelId);
+    const canSetLevel = canThink && supportsThinkingLevels(provider, modelId);
 
     // Load saved conversations from store
     useEffect(() => {
@@ -541,6 +552,11 @@ const Chat: React.FC = () => {
                 !modelRef.current.contains(e.target as Node)
             )
                 setShowModelMenu(false);
+            if (
+                thinkingRef.current &&
+                !thinkingRef.current.contains(e.target as Node)
+            )
+                setShowThinkingMenu(false);
         };
         document.addEventListener("mousedown", handleClick);
         return () => document.removeEventListener("mousedown", handleClick);
@@ -682,6 +698,10 @@ Guidelines:
             },
         };
 
+        const thinkingConfig: ThinkingConfig | undefined = canThink
+            ? { enabled: thinkingEnabled, level: thinkingLevel }
+            : undefined;
+
         try {
             await streamChat(
                 provider,
@@ -689,6 +709,7 @@ Guidelines:
                 streamCallbacks,
                 controller.signal,
                 modelId,
+                thinkingConfig,
             );
 
             // Save thinking text for this message
@@ -1196,7 +1217,7 @@ Guidelines:
                             </button>
                             {showProviderMenu && (
                                 <div
-                                    className="absolute left-0 bottom-full mb-1 w-48 rounded-lg border py-1 z-50 shadow-lg"
+                                    className="glass-dropdown absolute left-0 bottom-full mb-1 w-48 rounded-lg border py-1 z-50 shadow-lg"
                                     style={{
                                         background: "var(--bg-secondary)",
                                         borderColor: "var(--border)",
@@ -1279,6 +1300,139 @@ Guidelines:
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {/* Thinking toggle */}
+                        {canThink && (
+                            <div className="relative" ref={thinkingRef}>
+                                <button
+                                    onClick={() => {
+                                        if (canSetLevel) {
+                                            setShowThinkingMenu(!showThinkingMenu);
+                                        } else {
+                                            setThinkingEnabled(!thinkingEnabled);
+                                        }
+                                    }}
+                                    className="flex items-center gap-1.5 text-xs py-1.5 px-2.5 rounded-md transition-colors"
+                                    style={{
+                                        background: thinkingEnabled
+                                            ? "rgba(0, 122, 255, 0.12)"
+                                            : "var(--bg-tertiary)",
+                                        color: thinkingEnabled
+                                            ? "var(--accent)"
+                                            : "var(--text-tertiary)",
+                                    }}
+                                    title={
+                                        thinkingEnabled
+                                            ? `Thinking: ${thinkingLevel}`
+                                            : "Thinking disabled"
+                                    }
+                                >
+                                    <Brain className="w-3.5 h-3.5" />
+                                    {canSetLevel && (
+                                        <>
+                                            <span className="capitalize">
+                                                {thinkingEnabled ? thinkingLevel : "Off"}
+                                            </span>
+                                            <ChevronDown className="w-3 h-3" />
+                                        </>
+                                    )}
+                                </button>
+                                {showThinkingMenu && canSetLevel && (
+                                    <div
+                                        className="glass-dropdown absolute right-0 bottom-full mb-1 w-40 rounded-lg border py-1 z-50 shadow-lg"
+                                        style={{
+                                            background: "var(--bg-secondary)",
+                                            borderColor: "var(--border)",
+                                        }}
+                                    >
+                                        <button
+                                            onClick={() => {
+                                                setThinkingEnabled(false);
+                                                setShowThinkingMenu(false);
+                                            }}
+                                            className="w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center gap-2"
+                                            style={{
+                                                color: !thinkingEnabled
+                                                    ? "var(--accent)"
+                                                    : "var(--text-primary)",
+                                            }}
+                                            onMouseEnter={(e) =>
+                                                (e.currentTarget.style.background =
+                                                    "var(--bg-tertiary)")
+                                            }
+                                            onMouseLeave={(e) =>
+                                                (e.currentTarget.style.background =
+                                                    "transparent")
+                                            }
+                                        >
+                                            <X className="w-3 h-3" />
+                                            Off
+                                        </button>
+                                        {(["low", "medium", "high"] as ThinkingLevel[]).map(
+                                            (level) => (
+                                                <button
+                                                    key={level}
+                                                    onClick={() => {
+                                                        setThinkingEnabled(true);
+                                                        setThinkingLevel(level);
+                                                        setShowThinkingMenu(false);
+                                                    }}
+                                                    className="w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center gap-2"
+                                                    style={{
+                                                        color:
+                                                            thinkingEnabled &&
+                                                            thinkingLevel === level
+                                                                ? "var(--accent)"
+                                                                : "var(--text-primary)",
+                                                    }}
+                                                    onMouseEnter={(e) =>
+                                                        (e.currentTarget.style.background =
+                                                            "var(--bg-tertiary)")
+                                                    }
+                                                    onMouseLeave={(e) =>
+                                                        (e.currentTarget.style.background =
+                                                            "transparent")
+                                                    }
+                                                >
+                                                    <Zap
+                                                        className="w-3 h-3"
+                                                        style={{
+                                                            opacity:
+                                                                level === "low"
+                                                                    ? 0.4
+                                                                    : level === "medium"
+                                                                      ? 0.7
+                                                                      : 1,
+                                                        }}
+                                                    />
+                                                    <span className="capitalize">{level}</span>
+                                                    {level === "low" && (
+                                                        <span
+                                                            className="ml-auto text-[10px]"
+                                                            style={{
+                                                                color: "var(--text-tertiary)",
+                                                            }}
+                                                        >
+                                                            Fast
+                                                        </span>
+                                                    )}
+                                                    {level === "high" && (
+                                                        <span
+                                                            className="ml-auto text-[10px]"
+                                                            style={{
+                                                                color: "var(--text-tertiary)",
+                                                            }}
+                                                        >
+                                                            Deep
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            ),
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Model selector */}
                         <div className="relative" ref={modelRef}>
                             <button
@@ -1298,7 +1452,7 @@ Guidelines:
                             </button>
                             {showModelMenu && (
                                 <div
-                                    className="absolute right-0 bottom-full mb-1 w-52 rounded-lg border py-1 z-50 shadow-lg max-h-60 overflow-y-auto"
+                                    className="glass-dropdown absolute right-0 bottom-full mb-1 w-52 rounded-lg border py-1 z-50 shadow-lg max-h-60 overflow-y-auto"
                                     style={{
                                         background: "var(--bg-secondary)",
                                         borderColor: "var(--border)",

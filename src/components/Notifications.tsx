@@ -205,16 +205,7 @@ const Notifications: React.FC = () => {
                     </h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={load}
-                        className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)]"
-                        title="Refresh"
-                    >
-                        <RefreshCw
-                            className="w-4 h-4"
-                            style={{ color: "var(--text-secondary)" }}
-                        />
-                    </button>
+                    <RefreshButton onRefresh={load} />
                     {unreadCount > 0 && (
                         <button
                             onClick={handleMarkAllRead}
@@ -510,5 +501,31 @@ const SideButton: React.FC<{
         )}
     </button>
 );
+
+const RefreshButton: React.FC<{ onRefresh: () => Promise<void> | void }> = ({ onRefresh }) => {
+    const [spinning, setSpinning] = useState(false);
+    const handleClick = async () => {
+        setSpinning(true);
+        try { await onRefresh(); } finally {
+            setTimeout(() => setSpinning(false), 600);
+        }
+    };
+    return (
+        <button
+            onClick={handleClick}
+            className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
+            title="Refresh"
+        >
+            <RefreshCw
+                className="w-4 h-4 transition-transform"
+                style={{
+                    color: "var(--text-secondary)",
+                    transform: spinning ? "rotate(360deg)" : "rotate(0deg)",
+                    transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+            />
+        </button>
+    );
+};
 
 export default Notifications;

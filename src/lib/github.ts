@@ -33,6 +33,42 @@ async function ghFetch<T>(path: string): Promise<T> {
     return response.json();
 }
 
+async function ghFetchAllPages<T>(path: string): Promise<T[]> {
+    const token = useAuthStore.getState().token;
+    const all: T[] = [];
+    let url: string | null = `${API}${path}`;
+
+    while (url) {
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github+json",
+                "User-Agent": APP_USER_AGENT,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        const data: T[] = await response.json();
+        all.push(...data);
+
+        const link = response.headers.get("link");
+        url = null;
+        if (link) {
+            const next = link.split(",").find((s) => s.includes('rel="next"'));
+            if (next) {
+                const match = next.match(/<([^>]+)>/);
+                if (match) url = match[1];
+            }
+        }
+    }
+
+    return all;
+}
+
 async function ghFetchRaw(path: string): Promise<string> {
     const token = useAuthStore.getState().token;
     const response = await fetch(`${API}${path}`, {
@@ -123,6 +159,7 @@ export interface GitHubRepo {
     web_commit_signoff_required: boolean;
     archived: boolean;
     disabled: boolean;
+    mirror_url: string | null;
     size: number;
     html_url: string;
     permissions?: {
@@ -262,11 +299,11 @@ export interface GitHubSubscription {
 
 export async function fetchRepos(): Promise<GitHubRepo[]> {
     return fetchWithCache(
-        "repos:list",
+        "repos:list:owner:v3",
         CACHE_TTL_MEDIUM,
         () =>
-            ghFetch<GitHubRepo[]>(
-                "/user/repos?sort=updated&per_page=50&affiliation=owner,collaborator",
+            ghFetchAllPages<GitHubRepo>(
+                "/user/repos?sort=updated&per_page=100&type=owner",
             ),
     );
 }
@@ -442,6 +479,16 @@ export async function fetchRepoIssues(
     );
 }
 
+/** Fetch open issues without cache — used by the support page after submitting. */
+export async function fetchRepoIssuesNoCache(
+    owner: string,
+    name: string,
+): Promise<GitHubIssue[]> {
+    return ghFetch<GitHubIssue[]>(
+        `/repos/${owner}/${name}/issues?state=open&per_page=30&sort=created&direction=desc`,
+    );
+}
+
 export async function fetchRepoPRs(
     owner: string,
     name: string,
@@ -496,6 +543,17 @@ export async function fetchIssueComments(
             ghFetch<GitHubComment[]>(
                 `/repos/${owner}/${name}/issues/${number}/comments?per_page=50`,
             ),
+    );
+}
+
+/** Fetch issue comments without cache — used by the support detail view. */
+export async function fetchIssueCommentsNoCache(
+    owner: string,
+    name: string,
+    number: number,
+): Promise<GitHubComment[]> {
+    return ghFetch<GitHubComment[]>(
+        `/repos/${owner}/${name}/issues/${number}/comments?per_page=50`,
     );
 }
 
@@ -917,20 +975,48 @@ export async function fetchWorkflowRuns(
     return data.workflow_runs || [];
 }
 
+const searchCache = new Map<string, { data: unknown; ts: number }>();
+const SEARCH_CACHE_TTL = 30_000;
+
+function getCachedSearch<T>(key: string): T | null {
+    const entry = searchCache.get(key);
+    if (entry && Date.now() - entry.ts < SEARCH_CACHE_TTL) return entry.data as T;
+    return null;
+}
+
+function setCachedSearch<T>(key: string, data: T): void {
+    searchCache.set(key, { data, ts: Date.now() });
+    // Evict old entries
+    if (searchCache.size > 50) {
+        const oldest = searchCache.keys().next().value;
+        if (oldest) searchCache.delete(oldest);
+    }
+}
+
 export async function searchRepos(query: string): Promise<GitHubRepo[]> {
+    const cacheKey = `search:repos:${query}`;
+    const cached = getCachedSearch<GitHubRepo[]>(cacheKey);
+    if (cached) return cached;
     const data = await ghFetch<{ items: GitHubRepo[] }>(
         `/search/repositories?q=${encodeURIComponent(query)}&per_page=20&sort=stars`,
     );
-    return data.items || [];
+    const results = data.items || [];
+    setCachedSearch(cacheKey, results);
+    return results;
 }
 
 export async function searchUsers(
     query: string,
 ): Promise<GitHubUserProfile[]> {
+    const cacheKey = `search:users:${query}`;
+    const cached = getCachedSearch<GitHubUserProfile[]>(cacheKey);
+    if (cached) return cached;
     const data = await ghFetch<{ items: GitHubUserProfile[] }>(
         `/search/users?q=${encodeURIComponent(query)}&per_page=20`,
     );
-    return data.items || [];
+    const results = data.items || [];
+    setCachedSearch(cacheKey, results);
+    return results;
 }
 
 export async function fetchUserProfile(

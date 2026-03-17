@@ -11,9 +11,12 @@ export type ShortcutId =
     | "goIssues"
     | "goPullRequests"
     | "goChat"
+    | "goAIReview"
+    | "goStatus"
     | "goSearch"
     | "goNotifications"
-    | "goSettings";
+    | "goSettings"
+    | "goSupport";
 
 export type ShortcutMap = Record<ShortcutId, string>;
 
@@ -62,6 +65,18 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
         path: "/chat",
     },
     {
+        id: "goAIReview",
+        label: "AI Review",
+        description: "Open AI code review",
+        path: "/ai-review",
+    },
+    {
+        id: "goStatus",
+        label: "GitHub Status",
+        description: "Open GitHub status",
+        path: "/status",
+    },
+    {
         id: "goSearch",
         label: "Search",
         description: "Open global search",
@@ -79,6 +94,12 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
         description: "Open settings",
         path: "/settings",
     },
+    {
+        id: "goSupport",
+        label: "Help & Feedback",
+        description: "Open help & feedback",
+        path: "/support",
+    },
 ];
 
 const LEGACY_DEFAULT_KEYBOARD_SHORTCUTS: ShortcutMap = {
@@ -87,9 +108,12 @@ const LEGACY_DEFAULT_KEYBOARD_SHORTCUTS: ShortcutMap = {
     goIssues: "Mod+3",
     goPullRequests: "Mod+4",
     goChat: "Mod+5",
+    goAIReview: "Shift+Mod+A",
+    goStatus: "Shift+Mod+G",
     goSearch: "Mod+K",
     goNotifications: "Shift+Mod+N",
     goSettings: "Mod+,",
+    goSupport: "Shift+Mod+H",
 };
 
 export const DEFAULT_KEYBOARD_SHORTCUTS: ShortcutMap = {
@@ -98,15 +122,18 @@ export const DEFAULT_KEYBOARD_SHORTCUTS: ShortcutMap = {
     goIssues: "Mod+I",
     goPullRequests: "Shift+Mod+P",
     goChat: "Shift+Mod+C",
+    goAIReview: "Shift+Mod+A",
+    goStatus: "Shift+Mod+G",
     goSearch: "Mod+K",
     goNotifications: "Shift+Mod+N",
     goSettings: "Mod+,",
+    goSupport: "Shift+Mod+H",
 };
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
     notifications: true,
     autoReview: false,
-    keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
+    keyboardShortcuts: { ...DEFAULT_KEYBOARD_SHORTCUTS },
 };
 
 export async function loadAppPreferences(): Promise<AppPreferences> {
