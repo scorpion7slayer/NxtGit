@@ -23,6 +23,7 @@ No local test runner or linter is configured. CI/CD via GitHub Actions (`.github
 ## Architecture
 
 ### Frontend (`src/`)
+
 - **React 18 + TypeScript + Tailwind CSS 3**, bundled with Vite 5
 - Path alias: `@` maps to `./src` (configured in `vite.config.ts`)
 - Routing: `react-router-dom` v6 with `BrowserRouter` in `main.tsx`, routes defined in `App.tsx`
@@ -31,15 +32,18 @@ No local test runner or linter is configured. CI/CD via GitHub Actions (`.github
 - All components are in `src/components/` as single-file React functional components with co-located sub-components (no separate files for small pieces like `StatCard`, `PRCard`, etc.)
 
 ### Backend (`src-tauri/`)
+
 - **Tauri v2** with minimal Rust code — `main.rs` only registers plugins. `lib.rs` now also exposes platform info for the frontend and applies native vibrancy only on macOS Tahoe 26+.
 - Plugins: `tauri-plugin-shell`, `tauri-plugin-http`, `tauri-plugin-store`, `tauri-plugin-window-state`, `tauri-plugin-clipboard-manager`, `tauri-plugin-updater`, `tauri-plugin-process`
 - Config in `tauri.conf.json`: dev server at `localhost:1420`, transparent window with overlay title bar, updater endpoint on GitHub Releases, CSP restricted to GitHub API and OpenRouter API domains
 
 ### Business Logic (`src/lib/`)
+
 - **`ai.ts`** — Multi-provider AI integration with streaming support. Providers: GitHub Copilot (OAuth device flow), OpenRouter, Anthropic, OpenAI, Ollama (local), Moonshot, Kilocode, Minimax. Handles token management, model selection, and streaming responses.
 - **`github.ts`** — GitHub API wrapper using `@octokit/rest`. Repos, PRs, issues, commits, workflow runs, user profiles, org data.
 
 ### Design System
+
 - "Liquid Glass" is enabled only on macOS Tahoe 26+ via native vibrancy plus the `html.platform-macos-tahoe` class
 - `html.platform-macos` still exists for generic macOS behavior like drag regions and title bar spacing
 - On older macOS versions and Windows/other: solid opaque backgrounds, standard title bar behavior, no Liquid Glass blur stack
@@ -51,6 +55,7 @@ No local test runner or linter is configured. CI/CD via GitHub Actions (`.github
 - When adding UI, use CSS variables (`var(--text-primary)`, `var(--bg-tertiary)`, etc.) instead of hardcoded colors
 
 ### External APIs
+
 - **GitHub**: OAuth device flow implemented in `Login.tsx` with token polling, uses `@octokit/rest` for API calls. Scopes: `repo read:user read:org`
 - **AI Providers**: Multiple providers supported via `src/lib/ai.ts`:
   - **GitHub Copilot** — OAuth device flow, token caching with expiry, models: gpt-4.1, o3-mini, claude-sonnet-4, etc.
@@ -60,9 +65,69 @@ No local test runner or linter is configured. CI/CD via GitHub Actions (`.github
   - Keys stored locally via Tauri store
 
 ### Environment Variables
+
 - `VITE_GITHUB_CLIENT_ID` — GitHub OAuth client ID
 - `VITE_OPENROUTER_API_KEY` — OpenRouter API key (optional, can be set in-app)
 
 ## Current State
 
 Version 1.0.9 prepared. Core features implemented: GitHub OAuth device flow with token polling, real GitHub API integration (repos, PRs, issues, commits, workflow runs, user profiles), multi-provider AI with streaming (Copilot, OpenRouter, Anthropic, OpenAI, Ollama), AI-powered chat and code review, GitHub status monitoring, global search, app changelog from GitHub releases, macOS drag fixes, in-app update notification/install flow, GitHub changelog media support, configurable keyboard shortcuts, persistent offline caching for GitHub data, GitHub Pages-based HTML preview management, release hardening for Windows/Linux ARM assets, and Liquid Glass limited to macOS Tahoe 26+. 20+ components in `src/components/`.
+
+## Workflow Orchestration
+
+### 1. Plan Node Default
+
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately - don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One tack per subagent for focused execution
+
+### 3. Self-Improvement Loop
+
+- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
+
+### 4. Verification Before Done
+
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 5. Demand Elegance (Balanced)
+
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes - don't over-engineer
+- Challenge your own work before presenting it
+
+### 6. Autonomous Bug Fizing
+
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests - then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
+
+## Task Management
+
+1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `tasks/todo.md`
+6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimat Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
