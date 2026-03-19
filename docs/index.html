@@ -531,6 +531,16 @@
             footer a:hover {
                 color: var(--text);
             }
+            .footer-cloudflare {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .footer-cloudflare img {
+                width: 14px;
+                height: 14px;
+                filter: brightness(0) invert(0.63);
+            }
 
             /* Responsive */
             @media (max-width: 640px) {
@@ -987,6 +997,14 @@
                     <a href="https://github.com/scorpion7slayer/NxtGit"
                         >Source on GitHub</a
                     >
+                    &middot;
+                    <a
+                        href="https://www.cloudflare.com/"
+                        class="footer-cloudflare"
+                    >
+                        Powered by
+                        <img src="cloudflare.svg" alt="Cloudflare" />
+                    </a>
                 </p>
             </div>
         </footer>
