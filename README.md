@@ -118,4 +118,5 @@ MIT — see [LICENSE](LICENSE)
 
 ---
 
-Built by [@scorpion7slayer](https://github.com/scorpion7slayer)
+Built by [@scorpion7slayer](https://github.com/scorpion7slayer)</br>
+[![Powered by](https://img.shields.io/badge/Powered_by-Cloudflare-F38020?style=flat-square&logo=cloudflare)](https://www.cloudflare.com/)
