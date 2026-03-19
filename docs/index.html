@@ -536,11 +536,21 @@
                 align-items: center;
                 gap: 4px;
             }
+            .footer-cloudflare span {
+                transition: color 0.2s;
+            }
+            .footer-cloudflare:hover span {
+                color: #F48120;
+            }
             .footer-cloudflare img {
                 width: 14px;
                 height: 14px;
                 filter: brightness(0) invert(0.63);
             }
+            .footer-cloudflare:hover img {
+                filter: brightness(0) invert(56%) sepia(97%) saturate(1266%) hue-rotate(359deg) brightness(96%) contrast(91%);
+            }
+
 
             /* Responsive */
             @media (max-width: 640px) {
@@ -1002,7 +1012,7 @@
                         href="https://www.cloudflare.com/"
                         class="footer-cloudflare"
                     >
-                        Powered by
+                        Powered by <span>Cloudflare</span>
                         <img src="cloudflare.svg" alt="Cloudflare" />
                     </a>
                 </p>
