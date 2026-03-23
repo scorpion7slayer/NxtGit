@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nxtgit.nxtaigen.com/sitemap.xml
