@@ -20,7 +20,7 @@ import {
     DEFAULT_KEYBOARD_SHORTCUTS,
     type ShortcutId,
 } from "../lib/preferences";
-import logo from "../assets/logo.svg";
+import logo from "../assets/logo.png";
 import UpdateBanner from "./UpdateBanner";
 import WindowDragRegion from "./WindowDragRegion";
 

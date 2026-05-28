@@ -1,11 +1,28 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+src-tauri/target/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
 *.p12
+*.pfx
 *.cer
 *.key
+*.pem
+
+# Local tool state
 .grepai/
 .claude/
-.env
-dist
-src-tauri/target
 .conductor/
+
+# OS metadata
 .DS_Store
+
+# Local icon design sources and exports.
+nxtgit.icon/
+nxtgit Exports/

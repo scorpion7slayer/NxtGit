@@ -1,6 +1,6 @@
 [package]
 name = "nxtgit"
-version = "1.1.0"
+version = "1.1.1"
 description = "AI-native Git client for macOS"
 authors = ["scorpion7slayer"]
 edition = "2024"
@@ -37,3 +37,7 @@ objc = "0.2"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[patch.crates-io]
+# selectors 0.24 still pulls phf_generator 0.8 with vulnerable rand 0.7.
+phf_generator = { path = "vendor/phf_generator-0.8.1" }
