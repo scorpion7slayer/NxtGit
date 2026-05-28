@@ -5,7 +5,7 @@ import { fetch } from "@tauri-apps/plugin-http";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAuthStore } from "../stores/authStore";
-import logo from "../assets/logo.svg";
+import logo from "../assets/logo.png";
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID || "";
 

@@ -13,6 +13,17 @@ interface ChangelogVersion {
 
 const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.1.1',
+    date: 'May 2026',
+    changes: [
+      { type: 'fix', text: 'Patched all open Dependabot alerts across npm and Rust dependencies' },
+      { type: 'fix', text: 'Removed the remaining vulnerable rand 0.7 dependency from the Tauri build tree' },
+      { type: 'fix', text: 'Restored native macOS minimized-window thumbnails while keeping the NxtGit app icon in the Dock' },
+      { type: 'improvement', text: 'Refreshed the NxtGit app icon and in-app logo with the latest identity asset' },
+      { type: 'improvement', text: 'Regenerated macOS, Windows and Linux desktop icon assets for the new release' },
+    ],
+  },
+  {
     version: '1.1.0',
     date: 'March 2026',
     changes: [

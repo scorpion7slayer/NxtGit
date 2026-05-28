@@ -2,6 +2,26 @@
 
 All notable changes to NxtGit are documented here.
 
+## v1.1.1 — May 2026
+
+Security and branding patch release.
+
+### Security
+
+- Patched all open Dependabot alerts reported for npm and Rust dependencies.
+- Updated vulnerable frontend packages including DOMPurify, Mermaid, Vite, PostCSS, uuid, picomatch and lodash-es.
+- Updated vulnerable Rust dependencies including Tauri, rustls-webpki and rand.
+- Added a local `phf_generator` patch to remove the remaining vulnerable `rand 0.7` build dependency from the Tauri dependency tree.
+
+### Changed
+
+- Replaced the app icon and in-app logo with the latest NxtGit identity asset.
+- Regenerated macOS, Windows and Linux desktop icon assets from the new source export.
+- Restored native macOS minimized-window thumbnails while keeping the NxtGit app icon active in the Dock.
+- Updated app, bundle, Windows installer and fallback metadata to version 1.1.1.
+
+---
+
 ## v1.1.0 — March 2026
 
 The biggest update since launch. NxtGit now greets first-time users with a guided tour, ships a built-in Help & Feedback page, and adds polish across the board — from smoother animations to smarter search.
